@@ -91,7 +91,7 @@ const navItems = [
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<string[]>(["Quản lý người dùng"]);
+  const [expandedItems, setExpandedItems] = useState<string[]>(["Quản lý người dùngs"]);
   const location = useLocation();
 
   const toggleExpand = (name: string) => {
