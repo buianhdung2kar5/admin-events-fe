@@ -39,6 +39,9 @@ jobs:
         env:
           CI: false          # Tắt "treat warnings as errors" của CRA
           GENERATE_SOURCEMAP: false
+          
+      - name: 📄 Create 404.html fallback
+        run: cp build/index.html build/404.html
 
       - name: 📤 Upload build artifact
         uses: actions/upload-artifact@v4
