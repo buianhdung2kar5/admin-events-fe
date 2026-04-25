@@ -7,9 +7,13 @@ import DocList from "../../feature/user-management/verify-document/components/Do
 import { OrgCardData } from "../../feature/user-management/organization/data/OrgMockData";
 import { DocCardData } from "../../feature/user-management/verify-document/data/DocMockData";
 import { useParams } from "react-router-dom";
+import { useState } from "react";
+import ReportList from "../../feature/user-management/report/components/ReportList";
+import UserActivityLog from "../../feature/user-management/user/components/UserActivityLog";
 
 export default function UserManagement(){
     const { type } = useParams();
+    const [filter, setFilter] = useState<any>({});
 
     const renderContent = () => {
         switch (type) {
@@ -17,9 +21,13 @@ export default function UserManagement(){
                 return <OrgList />;
             case "verify-document":
                 return <DocList />;
+            case "report":
+                return <ReportList />;
+            case "activity":
+                return <UserActivityLog />;
             case "user":
             default:
-                return <ListUser />;
+                return <ListUser filter={filter} />;
         }
     };
 
@@ -27,6 +35,8 @@ export default function UserManagement(){
         switch (type) {
             case "organization": return "Quản lý tổ chức";
             case "verify-document": return "Xác thực & Duyệt hồ sơ";
+            case "report": return "Quản lý báo cáo vi phạm";
+            case "activity": return "Nhật ký hoạt động";
             default: return "Quản lý người dùng";
         }
     };
@@ -35,6 +45,13 @@ export default function UserManagement(){
         switch (type) {
             case "organization": return OrgCardData;
             case "verify-document": return DocCardData;
+            case "report": return []; // No cards for report
+            case "activity": return [
+                { title: "Tổng hoạt động hôm nay", value: 10 },
+                { title: "Thành công", value: 8, color: "text-green-500" },
+                { title: "Khả nghi", value: 1, color: "text-red-500" },
+                { title: "Thất bại", value: 1, color: "text-gray-500" },
+            ];
             default: return UserCardData;
         }
     }
@@ -54,27 +71,33 @@ export default function UserManagement(){
                </button>
             </header>
 
-            <div className={`grid grid-cols-1 md:grid-cols-2 ${cards.length === 6 ? 'xl:grid-cols-6' : 'xl:grid-cols-4'} gap-4`}>
-                {
-                    cards.map((item, index) => (
-                        <div key={index} className="flex flex-col gap-2 items-center justify-center bg-white p-6 py-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
-                            <p className={`text-3xl font-bold ${item.color || 'text-gray-800'}`}>{item.value}</p>
-                            <h1 className="text-sm font-medium text-gray-400">{item.title}</h1>
-                        </div>
-                    ))
-                }
-            </div>
+            {cards.length > 0 && (
+                <div className={`grid grid-cols-1 md:grid-cols-2 ${cards.length === 6 ? 'xl:grid-cols-6' : 'xl:grid-cols-4'} gap-4`}>
+                    {
+                        cards.map((card, index) => (
+                            <div key={index} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group hover:shadow-md transition-all">
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-gray-500 text-sm font-medium">{card.title}</span>
+                                    <span className="text-2xl font-bold text-gray-800 group-hover:text-[#0092B8] transition-colors">{card.value}</span>
+                                </div>
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${card.color || 'bg-gray-100'} bg-opacity-10 group-hover:bg-opacity-20 transition-all`}>
+                                    {card.icon && <card.icon className={card.color ? card.color.replace('bg-', 'text-') : 'text-gray-500'} size={24} />}
+                                </div>
+                            </div>
+                        ))
+                    }
+                </div>
+            )}
 
-           <div className="flex flex-col gap-6">
-                <GroupFilter setFilter={(data) =>console.log("data",data)} />
+            <div className="flex flex-col gap-6">
+                {(type === 'user' || type === 'organization' || !type) && (
+                    <GroupFilter setFilter={setFilter} />
+                )}
                 
                 <section className="flex flex-col gap-8">
                     {renderContent()}
                 </section>
-           </div>
+            </div>
         </div>
     )
 }
-
-
-

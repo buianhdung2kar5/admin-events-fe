@@ -2,19 +2,23 @@ import { useParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import GroupFilter from "../../feature/user-management/user/components/GroupFilter";
 
-// Import actual components
 import CategoryList from "../../feature/content-management/category/components/CategoryList";
-import PostList from "../../feature/content-management/post/components/PostList";
+import EventList from "../../feature/content-management/event/components/EventList";
 import FeaturedList from "../../feature/content-management/featured/components/FeaturedList";
 import NewsList from "../../feature/content-management/news/components/NewsList";
 import NotifList from "../../feature/content-management/notification/components/NotifList";
+import RecruitmentList from "../../feature/content-management/recruitment/components/RecruitmentList";
+import AttendanceList from "../../feature/content-management/attendance/components/AttendanceList";
+import VenueList from "../../feature/content-management/venue/components/VenueList";
 
 // Import actual data
 import { CategoryCardData } from "../../feature/content-management/category/data/CategoryMockData";
-import { PostCardData } from "../../feature/content-management/post/data/PostMockData";
+import { EventCardData } from "../../feature/content-management/event/data/EventMockData";
 import { FeaturedCardData } from "../../feature/content-management/featured/data/FeaturedMockData";
 import { NewsCardData } from "../../feature/content-management/news/data/NewsMockData";
 import { NotifCardData } from "../../feature/content-management/notification/data/NotifMockData";
+import { RecruitmentCardData } from "../../feature/content-management/recruitment/data/RecruitmentMockData";
+import { VenueCardData } from "../../feature/content-management/venue/data/VenueMockData";
 
 export default function ContentManagement() {
     const { type } = useParams();
@@ -22,10 +26,13 @@ export default function ContentManagement() {
     const getTitle = () => {
         switch (type) {
             case "category": return "Quản lý danh mục";
-            case "post": return "Quản lý bài đăng";
+            case "event": return "Quản lý sự kiện";
             case "featured": return "Sự kiện nổi bật";
             case "news": return "Quản lý tin tức";
             case "notification": return "Thông báo hệ thống";
+            case "recruitment": return "Tuyển CTV / Tình nguyện viên";
+            case "attendance": return "Quản lý Điểm danh";
+            case "venue": return "Quản lý Địa điểm";
             default: return "Quản lý nội dung";
         }
     };
@@ -33,10 +40,13 @@ export default function ContentManagement() {
     const getDescription = () => {
         switch (type) {
             case "category": return "Quản lý danh mục sự kiện và các tùy chọn";
-            case "post": return "Duyệt bài đăng từ sinh viên · Giám sát bài đăng từ doanh nghiệp";
+            case "event": return "Duyệt sự kiện từ sinh viên · Quản lý sự kiện từ doanh nghiệp & tổ chức";
             case "featured": return "Quản lý sự kiện hiển thị nổi bật trên trang chủ";
             case "news": return "Tạo, chỉnh sửa và phê duyệt tin tức";
             case "notification": return "Gửi thông báo đến người dùng theo phân đoạn";
+            case "recruitment": return "Quản lý bài tuyển CTV/TNV · Duyệt đơn ứng tuyển · Xem câu trả lời";
+            case "attendance": return "Check-in/out QR · Thủ công · Quản lý participants · Nhật ký điểm danh";
+            case "venue": return "Quản lý địa điểm tổ chức sự kiện · Kiểm tra sức chứa · Admin chỉnh sửa & xóa";
             default: return "Quản lý và điều phối nội dung hệ thống";
         }
     };
@@ -44,10 +54,13 @@ export default function ContentManagement() {
     const getBtnText = () => {
         switch (type) {
             case "category": return "Tạo danh mục";
-            case "post": return "Tạo bài đăng";
+            case "event": return "Tạo sự kiện";
             case "featured": return "Thêm sự kiện nổi bật";
             case "news": return "Tạo tin tức";
             case "notification": return "Tạo thông báo";
+            case "venue": return "Thêm địa điểm";
+            case "recruitment": return null;
+            case "attendance": return null;
             default: return "Thêm mới";
         }
     };
@@ -55,10 +68,18 @@ export default function ContentManagement() {
     const currentCardData = () => {
         switch (type) {
             case "category": return CategoryCardData;
-            case "post": return PostCardData;
+            case "event": return EventCardData;
             case "featured": return FeaturedCardData;
             case "news": return NewsCardData;
             case "notification": return NotifCardData;
+            case "recruitment": return RecruitmentCardData;
+            case "venue": return VenueCardData;
+            case "attendance": return [
+                { title: "Tổng sự kiện", value: 4 },
+                { title: "Có dữ liệu điểm danh", value: 2, color: "text-blue-600" },
+                { title: "Tổng check-in", value: 5, color: "text-green-600" },
+                { title: "Tổng participants", value: 6, color: "text-[#0092B8]" },
+            ];
             default: return CategoryCardData;
         }
     };
@@ -66,10 +87,13 @@ export default function ContentManagement() {
     const renderContent = () => {
         switch (type) {
             case "category": return <CategoryList />;
-            case "post": return <PostList />;
+            case "event": return <EventList />;
             case "featured": return <FeaturedList />;
             case "news": return <NewsList />;
             case "notification": return <NotifList />;
+            case "recruitment": return <RecruitmentList />;
+            case "attendance": return <AttendanceList />;
+            case "venue": return <VenueList />;
             default: return <CategoryList />;
         }
     };
@@ -83,10 +107,12 @@ export default function ContentManagement() {
                     <h1 className="text-2xl font-bold text-gray-800">{getTitle()}</h1>
                     <p className="text-gray-500 text-sm">{getDescription()}</p>
                 </div>
-                <button className="flex items-center gap-2 bg-[#0092B8] text-white px-5 py-2.5 rounded-xl hover:bg-[#007a99] transition-colors shadow-sm font-semibold">
-                    <Plus size={20} />
-                    {getBtnText()}
-                </button>
+                {getBtnText() && (
+                    <button className="flex items-center gap-2 bg-[#0092B8] text-white px-5 py-2.5 rounded-xl hover:bg-[#007a99] transition-colors shadow-sm font-semibold">
+                        <Plus size={20} />
+                        {getBtnText()}
+                    </button>
+                )}
             </header>
 
             {/* Grid layout adapts to number of cards (8 vs 4/6) */}

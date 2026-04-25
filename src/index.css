@@ -25,3 +25,257 @@ input:-webkit-autofill:active {
     transition: background-color 5000s ease-in-out 0s;
     border-radius: inherit;
 }
+
+/* ── Shared Animations ── */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes fadeSlideUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+
+/* =============================================
+   LOGIN PAGE
+   ============================================= */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0f172a 0%, #0c2340 40%, #0e3a5c 70%, #0092B8 100%);
+  position: relative;
+  overflow: hidden;
+  padding: 1rem;
+}
+
+/* Animated decorative blobs */
+.login-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.25;
+  animation: loginBlobFloat 8s ease-in-out infinite;
+  pointer-events: none;
+}
+.login-blob-1 {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, #0092B8, #0055a5);
+  top: -120px; left: -120px;
+  animation-delay: 0s;
+}
+.login-blob-2 {
+  width: 380px; height: 380px;
+  background: radial-gradient(circle, #00c6e0, #0078c8);
+  bottom: -80px; right: -80px;
+  animation-delay: 3s;
+}
+.login-blob-3 {
+  width: 260px; height: 260px;
+  background: radial-gradient(circle, #38bdf8, #0092B8);
+  top: 50%; left: 60%;
+  transform: translate(-50%, -50%);
+  animation-delay: 5s;
+}
+
+@keyframes loginBlobFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%       { transform: translateY(-30px) scale(1.06); }
+}
+
+/* Card */
+.login-card {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 24px;
+  padding: 2.5rem 2rem;
+  box-shadow:
+    0 32px 64px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255,255,255,0.05) inset;
+  animation: loginCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes loginCardIn {
+  from { opacity: 0; transform: translateY(28px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Header */
+.login-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.login-logo {
+  width: 64px; height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #0092B8, #00c6e0);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1rem;
+  box-shadow: 0 8px 24px rgba(0, 146, 184, 0.45);
+}
+.login-logo-text {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #fff;
+  font-style: italic;
+  line-height: 1;
+}
+.login-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 0.4rem;
+  letter-spacing: -0.5px;
+}
+.login-subtitle {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.55);
+  margin: 0;
+}
+
+/* Error */
+.login-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.35);
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  color: #fca5a5;
+  font-size: 0.82rem;
+  margin-bottom: 1.25rem;
+  animation: shake 0.35s ease-in-out;
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%,60% { transform: translateX(-5px); }
+  40%,80% { transform: translateX(5px); }
+}
+
+/* Form */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.login-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 0.3px;
+}
+.login-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.login-input-icon {
+  position: absolute;
+  left: 14px;
+  color: rgba(255,255,255,0.4);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+.login-input {
+  width: 100%;
+  padding: 0.75rem 0.9rem 0.75rem 2.75rem;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+.login-input::placeholder { color: rgba(255,255,255,0.3); }
+.login-input:focus {
+  border-color: #0092B8;
+  background: rgba(0,146,184,0.12);
+  box-shadow: 0 0 0 3px rgba(0,146,184,0.2);
+}
+.login-input-password { padding-right: 2.75rem; }
+.login-eye-btn {
+  position: absolute;
+  right: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgba(255,255,255,0.45);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+.login-eye-btn:hover { color: #fff; }
+
+/* Submit button */
+.login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  margin-top: 0.4rem;
+  background: linear-gradient(135deg, #0092B8, #00b4d8);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 6px 20px rgba(0,146,184,0.45);
+  letter-spacing: 0.2px;
+}
+.login-btn:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(0,146,184,0.55);
+}
+.login-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.login-spinner {
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Footer */
+.login-footer {
+  text-align: center;
+  margin: 1.75rem 0 0;
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.3);
+}
+
+/* Autofill override for dark login inputs */
+.login-input:-webkit-autofill,
+.login-input:-webkit-autofill:hover,
+.login-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px rgba(0,146,184,0.15) inset !important;
+  -webkit-text-fill-color: #fff !important;
+  transition: background-color 5000s ease-in-out 0s;
+  border-radius: 12px;
+}

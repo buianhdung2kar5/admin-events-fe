@@ -2,46 +2,61 @@ import { useParams } from "react-router-dom"
 import { Plus } from "lucide-react"
 
 // Import sub-feature components
-import CoinPackageList from "../../feature/financial-management/collection-coin/components/CoinPackageList"
+import FinanceDashboard from "../../feature/financial-management/dashboard/components/FinanceDashboard"
+import TransactionList from "../../feature/financial-management/transaction/components/TransactionList"
+import CoinManagement from "../../feature/financial-management/coin/components/CoinManagement"
+import MomoTracker from "../../feature/financial-management/momo/components/MomoTracker"
+import PackageList from "../../feature/financial-management/package/components/PackageList"
+import CoinAuditLog from "../../feature/financial-management/coin/components/CoinAuditLog"
 
 const FinancialManagementPage = () => {
     const { type } = useParams();
 
     const getTitle = () => {
         switch (type) {
-            case "collection-coin": return "Quản lý Gói coin";
-            case "transaction": return "Lịch sử giao dịch";
-            case "momo-wallet": return "Cấu hình Momo Wallet";
-            default: return "Quản lý tài chính";
+            case "dashboard": return "Tổng quan tài chính";
+            case "transaction": return "Giao dịch hệ thống";
+            case "coin": return "Quản lý Coin";
+            case "momo": return "Cấu hình SePay";
+            case "package": return "Quản lý Gói dịch vụ";
+            case "coin-audit": return "Lịch sử Điều chỉnh Coin";
+            default: return "Tổng quan tài chính";
         }
     };
 
     const getDescription = () => {
         switch (type) {
-            case "collection-coin": return "Quản lý các gói nạp coin cho người dùng và đối tác";
-            case "transaction": return "Theo dõi biến động số dư và giao dịch hệ thống";
-            case "momo-wallet": return "Quản lý kết nối và tham số tích hợp ví Momo";
+            case "dashboard": return "Doanh thu và trạng thái luồng tiền";
+            case "transaction": return "Lịch sử và duyệt giao dịch nạp tiền";
+            case "coin": return "Kiểm tra và điều chỉnh số dư Coin của người dùng";
+            case "momo": return "Kiểm tra trạng thái callback thực tế từ SePay";
+            case "package": return "Quản lý gói subscription cho ORGANIZATION · Tạo, bật/tắt, theo dõi doanh thu";
+            case "coin-audit": return "Audit trail mọi lần điều chỉnh coin · Lịch sử ADMIN_ADJUST, NEWS_READ, EVENT_ATTEND...";
             default: return "Giám sát tài chính và cấu hình thanh toán";
         }
     };
 
     const getBtnText = () => {
         switch (type) {
-            case "collection-coin": return "Thêm gói mới";
-            case "transaction": return "Xuất báo cáo";
-            case "momo-wallet": return "Thêm cấu hình";
+            case "dashboard": return "Báo cáo tháng";
+            case "transaction": return "Xuất Excel";
+            case "coin": return "Lịch sử chung";
+            case "momo": return "Cập nhật Key";
+            case "package": return "Thêm gói mới";
+            case "coin-audit": return null;
             default: return "Thêm mới";
         }
     };
 
     const renderContent = () => {
         switch (type) {
-            case "collection-coin": return <CoinPackageList />;
-            case "transaction": 
-                return <div className="p-20 text-center bg-white rounded-[32px] shadow-sm border border-dashed border-gray-200 text-gray-400 font-bold italic">Chức năng Giao dịch đang được phát triển</div>;
-            case "momo-wallet": 
-                return <div className="p-20 text-center bg-white rounded-[32px] shadow-sm border border-dashed border-gray-200 text-gray-400 font-bold italic">Chức năng Momo Wallet đang được phát triển</div>;
-            default: return <CoinPackageList />;
+            case "dashboard": return <FinanceDashboard />;
+            case "transaction": return <TransactionList />;
+            case "coin": return <CoinManagement />;
+            case "momo": return <MomoTracker />;
+            case "package": return <PackageList />;
+            case "coin-audit": return <CoinAuditLog />;
+            default: return <FinanceDashboard />;
         }
     };
 

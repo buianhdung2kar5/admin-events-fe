@@ -4,36 +4,44 @@ import UserManagement from "../pages/user-management/page";
 import ContentManagement from "../pages/content-management/page";
 import FinancialManagement from "../pages/financial-management/page";
 import SettingsPage from "../pages/settings/page";
+import LoginPage from "../pages/login/page";
+import ProtectedRoute from "../auth/ProtectedRoute";
 
-export default function Path(){
+export default function Path() {
     return [
+        // Public route
         {
-            path:"/",
-            element:<Navigate to="/dashboard" />
+            path: "/login",
+            element: <LoginPage />,
+        },
+        // Protected routes
+        {
+            path: "/",
+            element: <Navigate to="/dashboard" />,
         },
         {
-            path:"/dashboard",
-            element:<Dashboard />
+            path: "/dashboard",
+            element: <ProtectedRoute><Dashboard /></ProtectedRoute>,
         },
         {
-            path:"*",
-            element:<Navigate to="/dashboard" />
+            path: "*",
+            element: <Navigate to="/dashboard" />,
         },
         {
-            path:"/user-management/:type?",
-            element:<UserManagement />
+            path: "/user-management/:type?",
+            element: <ProtectedRoute><UserManagement /></ProtectedRoute>,
         },
         {
-            path:"/content-management/:type?",
-            element:<ContentManagement />
+            path: "/content-management/:type?",
+            element: <ProtectedRoute><ContentManagement /></ProtectedRoute>,
         },
         {
-            path:"/finance-management/:type?",
-            element:<FinancialManagement />
+            path: "/finance-management/:type?",
+            element: <ProtectedRoute><FinancialManagement /></ProtectedRoute>,
         },
         {
-            path:"/settings",
-            element:<SettingsPage />
-        }
-    ]
+            path: "/settings",
+            element: <ProtectedRoute><SettingsPage /></ProtectedRoute>,
+        },
+    ];
 }

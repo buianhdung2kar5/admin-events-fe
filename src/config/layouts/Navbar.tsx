@@ -17,6 +17,10 @@ const navItems = [
         icon: <Users size={20} />,
         options: [
           {
+            name: "Báo cáo / Khiếu nại",
+            path: "/user-management/report"
+          },
+          {
             name: "Người dùng",
             path: "/user-management/user"
           },
@@ -27,6 +31,10 @@ const navItems = [
           {
             name: "Xác thực tài liệu",
             path: "/user-management/verify-document"
+          },
+          {
+            name: "Nhật ký hoạt động",
+            path: "/user-management/activity"
           }
         ]
     },
@@ -40,8 +48,8 @@ const navItems = [
             path: "/content-management/category"
           },
           {
-            name: "Bài đăng",
-            path: "/content-management/post"
+            name: "Sự kiện",
+            path: "/content-management/event"
           },
           {
             name: "Sự kiện nổi bật",
@@ -54,6 +62,18 @@ const navItems = [
           {
             name: "Thông báo hệ thống",
             path: "/content-management/notification"
+          },
+          {
+            name: "Địa điểm",
+            path: "/content-management/venue"
+          },
+          {
+            name: "Tuyển CTV",
+            path: "/content-management/recruitment"
+          },
+          {
+            name: "Điểm danh",
+            path: "/content-management/attendance"
           }
         ]
     },
@@ -64,16 +84,28 @@ const navItems = [
         icon: <DollarSign size={20} />,
         options:[
           {
-            name: "Gói Coin",
-            path: "/finance-management/collection-coin"
+            name: "Tổng quan",
+            path: "/finance-management/dashboard"
           },
           {
             name: "Giao dịch",
             path: "/finance-management/transaction"
           },
           {
-            name: "Momo Wallet",
-            path: "/finance-management/momo-wallet"
+            name: "Quản lý Coin",
+            path: "/finance-management/coin"
+          },
+          {
+            name: "Lịch sử Coin",
+            path: "/finance-management/coin-audit"
+          },
+          {
+            name: "Gói dịch vụ",
+            path: "/finance-management/package"
+          },
+          {
+            name: "Cấu hình SePay",
+            path: "/finance-management/momo"
           }
         ]
     },
