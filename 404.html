@@ -1,1 +1,48 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"/><link rel="icon" href="/favicon.ico"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Web site created using create-react-app"/><link rel="apple-touch-icon" href="/logo192.png"/><link rel="manifest" href="/manifest.json"/><title>Admin Events</title><script>!function(){var e=window.location.search.match(/[?&]p=([^&]*)/);if(e){var n=decodeURIComponent(e[1]),i=n.indexOf("#"),o=-1!==i?n.slice(i):"",c=-1!==i?n.slice(0,i):n;window.history.replaceState(null,null,"/"+c+o)}}()</script><script defer="defer" src="/static/js/main.be80bc37.js"></script><link href="/static/css/main.aa948cba.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Admin Events</title>
+    <script>
+      /**
+       * GitHub Pages SPA redirect trick
+       *
+       * GitHub Pages là static server. Khi React Router điều hướng tới
+       * /login, /dashboard... server không tìm được file vật lý → 404.
+       *
+       * Fix: Mọi 404 được load file này. Script dưới encode path hiện tại
+       * thành query string rồi redirect về index.html để React Router xử lý.
+       *
+       * Hỗ trợ cả:
+       *   - Root domain:  events.net.vn/login
+       *   - Subfolder:    events.net.vn/admin-events-fe/login
+       */
+      (function () {
+        var l = window.location;
+        var segments = l.pathname.split("/").filter(Boolean);
+
+        // Tìm base path:
+        // Nếu app chạy ở subfolder (VD: /admin-events-fe/),
+        // segment đầu tiên là tên repo. Phân biệt bằng cách
+        // check xem homepage có CNAME hay không — không thể biết
+        // tại runtime. Dùng cách an toàn: thử gửi về / trước.
+        // Script trong index.html sẽ restore đúng path.
+        var encodedPath = encodeURIComponent(
+          segments.join("/") +
+            (l.search ? "?" + l.search.slice(1) : "") +
+            l.hash
+        );
+
+        l.replace(
+          l.protocol +
+            "//" +
+            l.hostname +
+            (l.port ? ":" + l.port : "") +
+            "/?p=" +
+            encodedPath
+        );
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>
