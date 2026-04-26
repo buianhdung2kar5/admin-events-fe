@@ -26,7 +26,7 @@ export default function CategoryList() {
         if (selectedIds.length === paginatedItems.length && paginatedItems.length > 0) {
             setSelectedIds([]);
         } else {
-            setSelectedIds(paginatedItems.map(c => c.id));
+            setSelectedIds(paginatedItems.map(c => c.category_id));
         }
     };
 
@@ -52,8 +52,8 @@ export default function CategoryList() {
     };
 
     const handleUpdateCategory = (updated: CategoryItem) => {
-        setCategories(prev => prev.map(c => c.id === updated.id ? updated : c));
-        if (selectedCategory?.id === updated.id) setSelectedCategory(updated);
+        setCategories(prev => prev.map(c => c.category_id === updated.category_id ? updated : c));
+        if (selectedCategory?.category_id === updated.category_id) setSelectedCategory(updated);
     };
 
     const handleDeleteClick = (cat: CategoryItem) => {
@@ -70,14 +70,14 @@ export default function CategoryList() {
 
     const handleConfirmDelete = () => {
         if (!selectedCategory) return;
-        setCategories(prev => prev.filter(c => c.id !== selectedCategory.id));
-        setSelectedIds(prev => prev.filter(i => i !== selectedCategory.id));
+        setCategories(prev => prev.filter(c => c.category_id !== selectedCategory.category_id));
+        setSelectedIds(prev => prev.filter(i => i !== selectedCategory.category_id));
         setIsDeleteConfirmOpen(false);
         setSelectedCategory(null);
     };
 
     const handleBulkDelete = () => {
-        const blocked = categories.filter(c => selectedIds.includes(c.id) && c.options.length > 0);
+        const blocked = categories.filter(c => selectedIds.includes(c.category_id) && c.options.length > 0);
         if (blocked.length > 0) {
             const names = blocked.map(c => `"${c.name}"`).join(", ");
             setDeleteError(`Không thể xóa các danh mục: ${names} vì còn options liên kết.`);
@@ -85,7 +85,7 @@ export default function CategoryList() {
             setIsDeleteConfirmOpen(true);
             return;
         }
-        setCategories(prev => prev.filter(c => !selectedIds.includes(c.id)));
+        setCategories(prev => prev.filter(c => !selectedIds.includes(c.category_id)));
         setSelectedIds([]);
     };
 
@@ -131,43 +131,45 @@ export default function CategoryList() {
                                         />
                                     </div>
                                 </th>
-                                <th className="px-5 py-4">Danh mục</th>
-                                <th className="px-5 py-4">Slug</th>
-                                <th className="px-5 py-4 text-center">Sự kiện</th>
+                                <th className="px-5 py-4">ID</th>
+                                <th className="px-5 py-4">Tên danh mục</th>
+                                <th className="px-5 py-4">Type</th>
                                 <th className="px-5 py-4 text-center">Options</th>
-                                <th className="px-5 py-4 text-center">Trạng thái</th>
                                 <th className="px-5 py-4 text-right">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {paginatedItems.map((cat) => {
-                                const isSelected = selectedIds.includes(cat.id);
+                                const isSelected = selectedIds.includes(cat.category_id);
                                 return (
-                                    <tr key={cat.id} className={`hover:bg-blue-50/30 transition-colors ${isSelected ? "bg-blue-50/50" : ""}`}>
+                                    <tr key={cat.category_id} className={`hover:bg-blue-50/30 transition-colors ${isSelected ? "bg-blue-50/50" : ""}`}>
                                         <td className="p-5">
                                             <div className="flex items-center justify-center">
                                                 <input
                                                     type="checkbox"
                                                     className="w-4 h-4 rounded-md border-gray-300 text-[#0092B8] cursor-pointer"
                                                     checked={isSelected}
-                                                    onChange={() => toggleSelect(cat.id)}
+                                                    onChange={() => toggleSelect(cat.category_id)}
                                                 />
                                             </div>
                                         </td>
+                                        {/* ID */}
                                         <td className="px-5 py-4">
-                                            <div className="flex flex-col gap-0.5 max-w-[260px]">
-                                                <span className="font-bold text-gray-800">{cat.name}</span>
-                                                <span className="text-xs text-gray-400 truncate">{cat.description}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-4">
-                                            <span className="px-3 py-1 bg-gray-50 text-gray-500 rounded-lg text-xs font-mono border border-gray-100">
-                                                {cat.slug}
+                                            <span className="text-xs font-mono text-gray-400 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
+                                                #{cat.category_id}
                                             </span>
                                         </td>
-                                        <td className="px-5 py-4 text-center">
-                                            <span className="font-bold text-gray-700">{cat.eventCount}</span>
+                                        {/* Name */}
+                                        <td className="px-5 py-4">
+                                            <span className="font-bold text-gray-800">{cat.name}</span>
                                         </td>
+                                        {/* Type */}
+                                        <td className="px-5 py-4">
+                                            <span className="px-3 py-1 bg-blue-50 text-[#0092B8] rounded-lg text-xs font-bold border border-blue-100 font-mono">
+                                                {cat.type}
+                                            </span>
+                                        </td>
+                                        {/* Options count */}
                                         <td className="px-5 py-4 text-center">
                                             <button
                                                 onClick={() => handleOpenOptions(cat)}
@@ -177,15 +179,7 @@ export default function CategoryList() {
                                                 {cat.options.length} options
                                             </button>
                                         </td>
-                                        <td className="px-5 py-4 text-center">
-                                            <span className={`inline-flex items-center px-3 py-1.5 rounded-xl border text-[11px] font-bold tracking-wide uppercase ${
-                                                cat.status === "Active"
-                                                    ? "bg-green-50 text-green-600 border-green-200"
-                                                    : "bg-gray-100 text-gray-400 border-gray-200"
-                                            }`}>
-                                                {cat.status === "Active" ? "Hoạt động" : "Tạm dừng"}
-                                            </span>
-                                        </td>
+                                        {/* Actions */}
                                         <td className="px-5 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button onClick={() => handleEdit(cat)} className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-all" title="Chỉnh sửa">

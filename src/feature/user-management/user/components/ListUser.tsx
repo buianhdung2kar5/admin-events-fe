@@ -27,9 +27,13 @@ interface ListUserProps {
     };
 }
 
+// Chỉ lấy người dùng cá nhân — Organization/Business có module riêng
+const USER_ONLY_ROLES: string[] = ["Admin", "Member", "Student"];
+const userOnlyData = MockUsers.filter(u => USER_ONLY_ROLES.includes(u.role));
+
 export default function ListUser({ filter }: ListUserProps) {
     // ── State ──────────────────────────────────────────────────────
-    const [data, setData] = useState<UserItem[]>(MockUsers);
+    const [data, setData] = useState<UserItem[]>(userOnlyData);
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [detailUser, setDetailUser] = useState<UserItem | null>(null);

@@ -1,6 +1,6 @@
 import { CardInfo } from "../../../user-management/user/data/UserMockData";
 
-export type EventStatus = "DRAFT" | "PUBLISHED" | "UPCOMING" | "ONGOING" | "COMPLETED" | "CANCELLED";
+export type EventStatus = "DRAFT" | "PUBLISHED" | "UPCOMING" | "ONGOING" | "COMPLETED" | "CANCELLED" | "LOCKED";
 
 export interface Demographics {
     gender: { male: number; female: number; other: number };
@@ -226,6 +226,7 @@ export const getEventStatusStyles = (status: EventStatus) => {
         case "ONGOING": return { label: "Đang diễn ra", color: "bg-blue-50 text-blue-600 border-blue-200" };
         case "COMPLETED": return { label: "Đã kết thúc", color: "bg-teal-50 text-teal-600 border-teal-200" };
         case "CANCELLED": return { label: "Đã hủy", color: "bg-red-50 text-red-600 border-red-200" };
+        case "LOCKED": return { label: "Bị khóa", color: "bg-amber-50 text-amber-600 border-amber-200" };
         default: return { label: status, color: "bg-gray-50 text-gray-600" };
     }
 };

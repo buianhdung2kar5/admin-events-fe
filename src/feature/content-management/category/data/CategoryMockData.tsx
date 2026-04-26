@@ -1,109 +1,87 @@
 import { CardInfo } from "../../../user-management/user/data/UserMockData";
 
+// ─── DB Schema (khớp với backend) ─────────────────────────────────────
+// Table: categories       → category_id, name, type
+// Table: category_options → category_option_id, value, category_id
+
 export interface CategoryOption {
-    id: string;
-    categoryId: string;
-    name: string;
+    category_option_id: string;
+    category_id: string;
+    value: string;
 }
 
 export interface CategoryItem {
-    id: string;
+    category_id: string;
     name: string;
-    description: string;
-    slug: string;
-    eventCount: number;
+    type: string;
+    // Runtime-only: options được fetch riêng theo category_id
     options: CategoryOption[];
-    status: "Active" | "Paused";
 }
 
+// ─── Mock Data ────────────────────────────────────────────────────────
 export const MockCategories: CategoryItem[] = [
     {
-        id: "1",
-        name: "Công nghệ",
-        description: "Hội thảo, workshop về lập trình, AI, Blockchain...",
-        slug: "cong-nghe",
-        eventCount: 24,
+        category_id: "1020",
+        name: "Địa điểm",
+        type: "LOCATION",
         options: [
-            { id: "o1-1", categoryId: "1", name: "Trí tuệ nhân tạo (AI)" },
-            { id: "o1-2", categoryId: "1", name: "Blockchain" },
-            { id: "o1-3", categoryId: "1", name: "Web Development" }
+            { category_option_id: "1102", category_id: "1020", value: "ĐH Kinh Tế TP.HCM" },
+            { category_option_id: "1103", category_id: "1020", value: "ĐH Bách Khoa Hà Nội" },
+            { category_option_id: "1104", category_id: "1020", value: "ĐH Ngoại Thương" },
         ],
-        status: "Active"
     },
     {
-        id: "2",
-        name: "Kinh doanh",
-        description: "Khởi nghiệp, marketing, tài chính sinh viên...",
-        slug: "kinh-doanh",
-        eventCount: 18,
+        category_id: "1001",
+        name: "Lĩnh vực",
+        type: "FIELD",
         options: [
-            { id: "o2-1", categoryId: "2", name: "Khởi nghiệp" },
-            { id: "o2-2", categoryId: "2", name: "Marketing" }
+            { category_option_id: "1001", category_id: "1001", value: "Công nghệ thông tin" },
+            { category_option_id: "1002", category_id: "1001", value: "Kinh doanh & Khởi nghiệp" },
+            { category_option_id: "1003", category_id: "1001", value: "Nghệ thuật & Văn hóa" },
         ],
-        status: "Active"
     },
     {
-        id: "3",
-        name: "Văn hóa - Nghệ thuật",
-        description: "Âm nhạc, nhiếp ảnh, hội họa, triển lãm...",
-        slug: "van-hoa",
-        eventCount: 12,
-        options: [],
-        status: "Active"
-    },
-    {
-        id: "4",
-        name: "Thể thao",
-        description: "Giải đấu, hội thao sinh viên, rèn luyện thể chất...",
-        slug: "the-thao",
-        eventCount: 9,
-        options: [],
-        status: "Active"
-    },
-    {
-        id: "5",
-        name: "Học thuật",
-        description: "Nghiên cứu khoa học, thi Olympiad, tọa đàm...",
-        slug: "hoc-thuat",
-        eventCount: 15,
+        category_id: "1002",
+        name: "Quy mô",
+        type: "SCALE",
         options: [
-            { id: "o5-1", categoryId: "5", name: "Nghiên cứu khoa học" },
-            { id: "o5-2", categoryId: "5", name: "Thi học thuật" }
+            { category_option_id: "1010", category_id: "1002", value: "Dưới 50 người" },
+            { category_option_id: "1011", category_id: "1002", value: "50 - 200 người" },
+            { category_option_id: "1012", category_id: "1002", value: "Trên 200 người" },
         ],
-        status: "Active"
     },
     {
-        id: "6",
-        name: "Tình nguyện",
-        description: "Hoạt động cộng đồng, từ thiện, mùa hè xanh...",
-        slug: "tinh-nguyen",
-        eventCount: 7,
-        options: [],
-        status: "Active"
+        category_id: "1003",
+        name: "Hình thức",
+        type: "FORMAT",
+        options: [
+            { category_option_id: "1020", category_id: "1003", value: "Offline" },
+            { category_option_id: "1021", category_id: "1003", value: "Online" },
+            { category_option_id: "1022", category_id: "1003", value: "Hybrid" },
+        ],
     },
     {
-        id: "7",
-        name: "Kỹ năng mềm",
-        description: "Giao tiếp, lãnh đạo, thuyết trình, làm việc nhóm...",
-        slug: "ky-nang-mem",
-        eventCount: 11,
-        options: [],
-        status: "Paused"
+        category_id: "1004",
+        name: "Đối tượng",
+        type: "TARGET",
+        options: [
+            { category_option_id: "1030", category_id: "1004", value: "Sinh viên" },
+            { category_option_id: "1031", category_id: "1004", value: "Doanh nghiệp" },
+            { category_option_id: "1032", category_id: "1004", value: "Tất cả" },
+        ],
     },
     {
-        id: "8",
-        name: "Ngoại ngữ",
-        description: "CLB tiếng Anh, Nhật, Hàn, Trung, giao lưu quốc tế...",
-        slug: "ngoai-ngu",
-        eventCount: 6,
+        category_id: "1005",
+        name: "Ngành học",
+        type: "MAJOR",
         options: [],
-        status: "Active"
-    }
+    },
 ];
 
+// ─── Card summary ─────────────────────────────────────────────────────
 export const CategoryCardData: CardInfo[] = [
-    { title: "Tổng danh mục", value: 8 },
-    { title: "Đang hoạt động", value: 7, color: "text-green-500" },
-    { title: "Tạm dừng", value: 1, color: "text-amber-500" },
-    { title: "Tổng sự kiện", value: 102, color: "text-blue-600" }
+    { title: "Tổng danh mục", value: MockCategories.length },
+    { title: "Có options",    value: MockCategories.filter(c => c.options.length > 0).length, color: "text-green-500" },
+    { title: "Chưa có options", value: MockCategories.filter(c => c.options.length === 0).length, color: "text-amber-500" },
+    { title: "Tổng options",  value: MockCategories.reduce((sum, c) => sum + c.options.length, 0), color: "text-blue-600" },
 ];

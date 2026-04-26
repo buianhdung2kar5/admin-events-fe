@@ -1,8 +1,9 @@
 import React from 'react';
 import { CheckCircle, Clock, XCircle, GraduationCap, Building2, ShieldCheck, UserCog } from "lucide-react";
 
-// ─── Enums / Types ────────────────────────────────────────────────
-export type UserRole = "Admin" | "Member" | "Organization" | "Student" | "Business";
+// Chỉ bao gồm người dùng cá nhân (không phải doanh nghiệp/tổ chức — đã có quản lý riêng)
+export type UserRole = "Member" | "Student";
+export type UserRoleFilter = UserRole | "Organization" | "Business"; // dùng cho filter nếu cần
 export type UserStatus = "Active" | "Pending" | "Blocked";
 export type VerifyStatus = "Pending" | "Approved" | "Rejected";
 export type UserRank = "Bronze" | "Silver" | "Gold" | "Platinum" | "Diamond";
@@ -115,75 +116,8 @@ export const MockUsers: UserItem[] = [
             { id: "c3", type: "earn", amount: 100, description: "Thưởng hoàn thành hồ sơ", date: "2024-01-20" },
         ],
     },
-    {
-        id: "2",
-        name: "Trần Thị Bảo Châu",
-        email: "baochau@techcorp.vn",
-        phone: "0987 654 321",
-        role: "Business",
-        status: "Active",
-        organization: "Công ty TNHH Tech Solutions",
-        eventCount: 5,
-        avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=BaoChau",
-        joinedDate: "2024-02-10",
-        rank: "Silver",
-        coinBalance: 3800,
-        bio: "Trưởng phòng Marketing tại Tech Solutions. Chuyên tổ chức sự kiện doanh nghiệp quy mô lớn.",
-        portfolios: [
-            { id: "p3", title: "LinkedIn", url: "https://linkedin.com/in/baochau", type: "linkedin" },
-            { id: "p4", title: "Website", url: "https://baochau.dev", type: "website" },
-        ],
-        eventHistory: [
-            { id: "e4", eventName: "Hội chợ Thương mại TP.HCM 2024", role: "Organizer", date: "2024-04-18", status: "Completed" },
-            { id: "e5", eventName: "Tech Connect 2025", role: "Speaker", date: "2025-01-10", status: "Completed" },
-        ],
-        verifyDocuments: [
-            { id: "d2", type: "BusinessLicense", label: "Giấy phép kinh doanh", fileUrl: "https://example.com/license.pdf", uploadedAt: "2024-02-11", status: "Approved" },
-        ],
-        actionLogs: [
-            { id: "l4", action: "Đăng nhập", detail: "Đăng nhập thành công", timestamp: "2026-04-25T09:00:00", ip: "116.96.xxx.xxx" },
-            { id: "l5", action: "Tạo sự kiện", detail: "Tạo bài đăng tuyển dụng CTV", timestamp: "2026-04-22T11:00:00", ip: "116.96.xxx.xxx" },
-        ],
-        coinHistory: [
-            { id: "c4", type: "earn", amount: 2000, description: "Nạp qua VNPay", date: "2026-03-01" },
-            { id: "c5", type: "spend", amount: -500, description: "Quảng cáo sự kiện", date: "2026-03-15" },
-            { id: "c6", type: "adjust", amount: 300, description: "Hoàn tiền sự kiện bị hủy", date: "2026-03-20" },
-        ],
-    },
-    {
-        id: "3",
-        name: "CLB Kỹ thuật BK",
-        email: "techclb@hust.edu.vn",
-        phone: "024 3868 2525",
-        role: "Organization",
-        status: "Active",
-        organization: "ĐH Bách Khoa Hà Nội",
-        eventCount: 45,
-        avatarUrl: "https://api.dicebear.com/7.x/initials/svg?seed=BK",
-        joinedDate: "2023-11-20",
-        rank: "Platinum",
-        coinBalance: 15000,
-        bio: "Câu lạc bộ kỹ thuật hàng đầu ĐH Bách Khoa với hơn 500 thành viên tích cực.",
-        portfolios: [
-            { id: "p5", title: "Website CLB", url: "https://techbk.vn", type: "website" },
-        ],
-        eventHistory: [
-            { id: "e6", eventName: "BKFest 2024", role: "Organizer", date: "2024-09-20", status: "Completed" },
-            { id: "e7", eventName: "Hackathon BK 2025", role: "Organizer", date: "2025-03-15", status: "Completed" },
-            { id: "e8", eventName: "Tech Summit 2026", role: "Organizer", date: "2026-05-20", status: "Upcoming" },
-        ],
-        verifyDocuments: [
-            { id: "d3", type: "StudentCard", label: "Giấy phép CLB", fileUrl: "https://example.com/clb.pdf", uploadedAt: "2023-11-21", status: "Approved" },
-        ],
-        actionLogs: [
-            { id: "l6", action: "Đăng nhập", detail: "Đăng nhập thành công", timestamp: "2026-04-25T07:45:00", ip: "123.21.xxx.xxx" },
-            { id: "l7", action: "Cập nhật hồ sơ", detail: "Cập nhật ảnh đại diện CLB", timestamp: "2026-04-18T16:00:00", ip: "123.21.xxx.xxx" },
-        ],
-        coinHistory: [
-            { id: "c7", type: "earn", amount: 10000, description: "Tài trợ từ nhà trường", date: "2024-09-01" },
-            { id: "c8", type: "spend", amount: -3000, description: "Chi phí tổ chức BKFest", date: "2024-09-20" },
-        ],
-    },
+    // id="4" — Student pending
+
     {
         id: "4",
         name: "Lê Văn Cường",
@@ -209,12 +143,13 @@ export const MockUsers: UserItem[] = [
         ],
         coinHistory: [],
     },
+    // id="5" — Admin bị khóa
     {
         id: "5",
         name: "Phạm Minh Đức",
         email: "minhd@admin.sevents.vn",
         phone: "0901 234 567",
-        role: "Admin",
+        role: "Student",
         status: "Blocked",
         organization: "S-Events Administrator",
         eventCount: 0,
@@ -232,6 +167,7 @@ export const MockUsers: UserItem[] = [
         ],
         coinHistory: [],
     },
+    // id="6" — Student active
     {
         id: "6",
         name: "Hoàng Thị Mai Lan",
@@ -262,38 +198,6 @@ export const MockUsers: UserItem[] = [
         coinHistory: [
             { id: "c9", type: "earn", amount: 700, description: "Nạp Momo", date: "2026-02-14" },
             { id: "c10", type: "spend", amount: -80, description: "Mua vé Music Fest", date: "2024-10-15" },
-        ],
-    },
-    {
-        id: "7",
-        name: "Võ Thanh Tùng",
-        email: "thanhtung@startup.io",
-        phone: "0912 000 111",
-        role: "Business",
-        status: "Active",
-        organization: "Startup Việt Hub",
-        eventCount: 3,
-        avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Tung",
-        joinedDate: "2025-01-10",
-        rank: "Bronze",
-        coinBalance: 400,
-        bio: "Founder của Startup Việt Hub, kết nối nhà đầu tư và startup trẻ tại Việt Nam.",
-        portfolios: [
-            { id: "p7", title: "LinkedIn", url: "https://linkedin.com/in/thanhtung", type: "linkedin" },
-            { id: "p8", title: "Website", url: "https://startupviethub.vn", type: "website" },
-        ],
-        eventHistory: [
-            { id: "e11", eventName: "Startup Demo Day 2025", role: "Organizer", date: "2025-03-01", status: "Completed" },
-        ],
-        verifyDocuments: [
-            { id: "d6", type: "BusinessLicense", label: "Đăng ký kinh doanh", fileUrl: "https://example.com/startup.pdf", uploadedAt: "2025-01-12", status: "Approved" },
-        ],
-        actionLogs: [
-            { id: "l13", action: "Đăng nhập", detail: "Đăng nhập thành công", timestamp: "2026-04-23T08:00:00", ip: "27.72.xxx.xxx" },
-        ],
-        coinHistory: [
-            { id: "c11", type: "earn", amount: 500, description: "Nạp ZaloPay", date: "2025-02-01" },
-            { id: "c12", type: "spend", amount: -100, description: "Quảng cáo Demo Day", date: "2025-02-15" },
         ],
     },
 ];
@@ -329,11 +233,13 @@ export const getRankStyle = (rank: UserRank) => {
     return map[rank] ?? { color: "#6B7280", bg: "#F9FAFB", label: rank };
 };
 
+// Card summary — chỉ tính người dùng cá nhân (Student + Admin + Member)
+// Organization và Business được quản lý ở module Doanh nghiệp riêng
 export const UserCardData: CardInfo[] = [
-    { title: "Tổng số",     value: 7 },
-    { title: "Sinh viên",   value: 4, color: "text-blue-600" },
-    { title: "Doanh nghiệp",value: 2, color: "text-purple-600" },
-    { title: "Admin",       value: 1, color: "text-sky-500" },
-    { title: "Hoạt động",   value: 6, color: "text-green-500" },
-    { title: "Bị khóa",     value: 1, color: "text-red-500" },
+    { title: "Tổng số",    value: 4 },
+    { title: "Sinh viên",  value: 3, color: "text-blue-600" },
+    { title: "Admin",      value: 1, color: "text-sky-500" },
+    { title: "Hoạt động",  value: 3, color: "text-green-500" },
+    { title: "Chờ duyệt",  value: 1, color: "text-amber-500" },
+    { title: "Bị khóa",    value: 1, color: "text-red-500" },
 ];

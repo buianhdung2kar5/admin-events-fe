@@ -1,5 +1,5 @@
 export type TransactionStatus = "PENDING" | "SUCCESS" | "FAILED";
-export type PaymentProvider = "MOMO" | "VNPAY" | "BANK_TRANSFER" | "SYSTEM";
+export type PaymentProvider = "SEPAY";
 
 export interface Transaction {
     id: string;
@@ -36,22 +36,22 @@ export interface UserCoinBalance {
 export const MockTransactions: Transaction[] = [
     {
         id: "tx-001", orderId: "ORD-MOMO-12345", userId: "u-001", userName: "Nguyễn Thị Lan", userEmail: "lan@student.edu.vn",
-        amount: 50000, coinAmount: 50, paymentProvider: "MOMO", status: "SUCCESS", reference: "MOMO123984572",
+        amount: 50000, coinAmount: 50, paymentProvider: "SEPAY", status: "SUCCESS", reference: "MOMO123984572",
         createdAt: "2024-04-20T10:00:00Z", updatedAt: "2024-04-20T10:05:00Z"
     },
     {
         id: "tx-002", orderId: "ORD-VNP-67890", userId: "u-002", userName: "Trần Văn Minh", userEmail: "minh@student.edu.vn",
-        amount: 100000, coinAmount: 110, paymentProvider: "VNPAY", status: "PENDING", reference: "VNP998231",
+        amount: 100000, coinAmount: 110, paymentProvider: "SEPAY", status: "PENDING", reference: "VNP998231",
         createdAt: "2024-04-25T08:30:00Z", updatedAt: "2024-04-25T08:30:00Z"
     },
     {
         id: "tx-003", orderId: "ORD-SYS-111", userId: "u-003", userName: "Lê Thị Hoa", userEmail: "hoa@student.edu.vn",
-        amount: 0, coinAmount: 200, paymentProvider: "SYSTEM", status: "FAILED", reason: "Phát hiện gian lận",
+        amount: 0, coinAmount: 200, paymentProvider: "SEPAY", status: "FAILED", reason: "Phát hiện gian lận",
         createdAt: "2024-04-22T14:20:00Z", updatedAt: "2024-04-22T15:00:00Z"
     },
     {
         id: "tx-004", orderId: "ORD-MOMO-99999", userId: "u-004", userName: "Phạm Quang Huy", userEmail: "huy@student.edu.vn",
-        amount: 200000, coinAmount: 230, paymentProvider: "MOMO", status: "PENDING",
+        amount: 200000, coinAmount: 230, paymentProvider: "SEPAY", status: "PENDING",
         createdAt: "2024-04-26T09:15:00Z", updatedAt: "2024-04-26T09:15:00Z"
     }
 ];

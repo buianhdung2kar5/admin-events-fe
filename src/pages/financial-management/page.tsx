@@ -17,7 +17,7 @@ const FinancialManagementPage = () => {
             case "dashboard": return "Tổng quan tài chính";
             case "transaction": return "Giao dịch hệ thống";
             case "coin": return "Quản lý Coin";
-            case "momo": return "Cấu hình SePay";
+            // case "momo": return "Cấu hình SePay";
             case "package": return "Quản lý Gói dịch vụ";
             case "coin-audit": return "Lịch sử Điều chỉnh Coin";
             default: return "Tổng quan tài chính";
@@ -29,7 +29,7 @@ const FinancialManagementPage = () => {
             case "dashboard": return "Doanh thu và trạng thái luồng tiền";
             case "transaction": return "Lịch sử và duyệt giao dịch nạp tiền";
             case "coin": return "Kiểm tra và điều chỉnh số dư Coin của người dùng";
-            case "momo": return "Kiểm tra trạng thái callback thực tế từ SePay";
+            // case "momo": return "Kiểm tra trạng thái callback thực tế từ SePay";
             case "package": return "Quản lý gói subscription cho ORGANIZATION · Tạo, bật/tắt, theo dõi doanh thu";
             case "coin-audit": return "Audit trail mọi lần điều chỉnh coin · Lịch sử ADMIN_ADJUST, NEWS_READ, EVENT_ATTEND...";
             default: return "Giám sát tài chính và cấu hình thanh toán";
@@ -41,7 +41,7 @@ const FinancialManagementPage = () => {
             case "dashboard": return "Báo cáo tháng";
             case "transaction": return "Xuất Excel";
             case "coin": return "Lịch sử chung";
-            case "momo": return "Cập nhật Key";
+            // case "momo": return "Cập nhật Key";
             case "package": return "Thêm gói mới";
             case "coin-audit": return null;
             default: return "Thêm mới";
@@ -53,7 +53,7 @@ const FinancialManagementPage = () => {
             case "dashboard": return <FinanceDashboard />;
             case "transaction": return <TransactionList />;
             case "coin": return <CoinManagement />;
-            case "momo": return <MomoTracker />;
+            // case "momo": return <MomoTracker />;
             case "package": return <PackageList />;
             case "coin-audit": return <CoinAuditLog />;
             default: return <FinanceDashboard />;

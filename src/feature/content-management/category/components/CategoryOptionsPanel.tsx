@@ -18,9 +18,9 @@ export default function CategoryOptionsPanel({ category, onClose, onUpdate }: Pr
     const handleAddOption = () => {
         if (!newOptionName.trim()) return;
         const newOption: CategoryOption = {
-            id: `o${category.id}-${Date.now()}`,
-            categoryId: category.id,
-            name: newOptionName.trim()
+            category_option_id: `opt-${Date.now()}`,
+            category_id: category.category_id,
+            value: newOptionName.trim()
         };
         const updated = [...options, newOption];
         setOptions(updated);
@@ -30,20 +30,20 @@ export default function CategoryOptionsPanel({ category, onClose, onUpdate }: Pr
     };
 
     const handleStartEdit = (option: CategoryOption) => {
-        setEditingId(option.id);
-        setEditingValue(option.name);
+        setEditingId(option.category_option_id);
+        setEditingValue(option.value);
     };
 
     const handleSaveEdit = () => {
         if (!editingValue.trim() || !editingId) return;
-        const updated = options.map(o => o.id === editingId ? { ...o, name: editingValue.trim() } : o);
+        const updated = options.map(o => o.category_option_id === editingId ? { ...o, value: editingValue.trim() } : o);
         setOptions(updated);
         onUpdate({ ...category, options: updated });
         setEditingId(null);
     };
 
     const handleDeleteOption = (id: string) => {
-        const updated = options.filter(o => o.id !== id);
+        const updated = options.filter(o => o.category_option_id !== id);
         setOptions(updated);
         onUpdate({ ...category, options: updated });
     };
@@ -83,9 +83,9 @@ export default function CategoryOptionsPanel({ category, onClose, onUpdate }: Pr
                     ) : (
                         <>
                             {options.map((option) => (
-                                <div key={option.id} className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 group hover:border-gray-200 transition-all">
+                                <div key={option.category_option_id} className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 group hover:border-gray-200 transition-all">
                                     <div className="w-2 h-2 rounded-full bg-[#0092B8]/40 shrink-0" />
-                                    {editingId === option.id ? (
+                                    {editingId === option.category_option_id ? (
                                         <>
                                             <input
                                                 type="text"
@@ -104,12 +104,12 @@ export default function CategoryOptionsPanel({ category, onClose, onUpdate }: Pr
                                         </>
                                     ) : (
                                         <>
-                                            <span className="flex-1 text-sm font-semibold text-gray-700">{option.name}</span>
+                                            <span className="flex-1 text-sm font-semibold text-gray-700">{option.value}</span>
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => handleStartEdit(option)} className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors">
                                                     <Edit3 size={14} />
                                                 </button>
-                                                <button onClick={() => handleDeleteOption(option.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                                <button onClick={() => handleDeleteOption(option.category_option_id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                                                     <Trash2 size={14} />
                                                 </button>
                                             </div>

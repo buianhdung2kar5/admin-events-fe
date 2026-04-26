@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Edit3, Trash2, Eye, Calendar, MapPin, Users, Globe, X, MessageSquare } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ChevronLeft, ChevronRight, Trash2, Eye, Calendar, MapPin, Users, Lock, Unlock, X, MessageSquare, ClipboardList } from "lucide-react";
 import { MockEvents, EventItem, getEventStatusStyles } from "../data/EventMockData";
 import EventDetailPanel from "./EventDetailPanel";
 import EventFormModal from "./EventFormModal";
@@ -8,12 +9,11 @@ import FeedbackPanel from "./FeedbackPanel";
 export default function EventList() {
     const [events, setEvents] = useState<EventItem[]>(MockEvents);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const navigate = useNavigate();
     
     // UI State
     const [isDetailOpen, setIsDetailOpen] = useState(false);
-    const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
-    const [formMode, setFormMode] = useState<"create" | "edit">("create");
     const [feedbackEvent, setFeedbackEvent] = useState<EventItem | null>(null);
 
     // Pagination
@@ -39,18 +39,6 @@ export default function EventList() {
         setIsDetailOpen(true);
     };
 
-    const handleEdit = (event: EventItem) => {
-        setSelectedEvent(event);
-        setFormMode("edit");
-        setIsFormOpen(true);
-    };
-
-    const handleCreate = () => {
-        setSelectedEvent(null);
-        setFormMode("create");
-        setIsFormOpen(true);
-    };
-
     const handleDelete = (id: string) => {
         setEvents(prev => prev.filter(e => e.id !== id));
         setSelectedIds(prev => prev.filter(i => i !== id));
@@ -61,10 +49,14 @@ export default function EventList() {
         setSelectedIds([]);
     };
 
-    const handlePublishToggle = (id: string) => {
+    const handleAttendance = (eventId: string) => {
+        navigate(`/content-management/attendance?eventId=${eventId}`);
+    };
+
+    const handleLockToggle = (id: string) => {
         setEvents(prev => prev.map(e => {
             if (e.id === id) {
-                return { ...e, status: e.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED" };
+                return { ...e, status: e.status === "LOCKED" ? "PUBLISHED" : "LOCKED" };
             }
             return e;
         }));
@@ -95,9 +87,6 @@ export default function EventList() {
                         <h2 className="text-lg font-bold text-gray-800 tracking-tight">Danh sách sự kiện</h2>
                     )}
                 </div>
-                <button onClick={handleCreate} className="px-4 py-2 bg-[#0092B8] text-white text-sm font-semibold rounded-xl hover:bg-[#007a99] transition-colors shadow-sm">
-                    Tạo sự kiện mới
-                </button>
             </div>
 
             {/* Table */}
@@ -174,17 +163,25 @@ export default function EventList() {
                                         </td>
                                         <td className="px-5 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button onClick={() => handlePublishToggle(event.id)} className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all" title={event.status === "PUBLISHED" ? "Gỡ bài" : "Xuất bản"}>
-                                                    <Globe size={16} />
+                                                <button
+                                                    onClick={() => handleLockToggle(event.id)}
+                                                    className={`p-2 rounded-xl transition-all ${
+                                                        event.status === "LOCKED"
+                                                            ? "text-amber-500 bg-amber-50 hover:bg-amber-100"
+                                                            : "text-gray-400 hover:text-amber-500 hover:bg-amber-50"
+                                                    }`}
+                                                    title={event.status === "LOCKED" ? "Mở khóa bài đăng" : "Khóa bài đăng"}
+                                                >
+                                                    {event.status === "LOCKED" ? <Unlock size={16} /> : <Lock size={16} />}
                                                 </button>
                                                 <button onClick={() => setFeedbackEvent(event)} className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all" title="Khảo sát / Phản hồi">
                                                     <MessageSquare size={16} />
                                                 </button>
+                                                <button onClick={() => handleAttendance(event.id)} className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all" title="Điểm danh">
+                                                    <ClipboardList size={16} />
+                                                </button>
                                                 <button onClick={() => handleViewDetail(event)} className="p-2 text-gray-400 hover:text-[#0092B8] hover:bg-blue-50 rounded-xl transition-all" title="Chi tiết">
                                                     <Eye size={16} />
-                                                </button>
-                                                <button onClick={() => handleEdit(event)} className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-all" title="Chỉnh sửa">
-                                                    <Edit3 size={16} />
                                                 </button>
                                                 <button onClick={() => handleDelete(event.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Xóa">
                                                     <Trash2 size={16} />
@@ -236,14 +233,6 @@ export default function EventList() {
             {/* Modals & Panels */}
             {isDetailOpen && selectedEvent && (
                 <EventDetailPanel event={selectedEvent} onClose={() => setIsDetailOpen(false)} />
-            )}
-            
-            {isFormOpen && (
-                <EventFormModal 
-                    event={selectedEvent} 
-                    mode={formMode} 
-                    onClose={() => setIsFormOpen(false)} 
-                />
             )}
         </div>
     );

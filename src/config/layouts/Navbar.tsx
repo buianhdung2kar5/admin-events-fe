@@ -70,10 +70,6 @@ const navItems = [
           {
             name: "Tuyển CTV",
             path: "/content-management/recruitment"
-          },
-          {
-            name: "Điểm danh",
-            path: "/content-management/attendance"
           }
         ]
     },
@@ -103,16 +99,11 @@ const navItems = [
             name: "Gói dịch vụ",
             path: "/finance-management/package"
           },
-          {
-            name: "Cấu hình SePay",
-            path: "/finance-management/momo"
-          }
+          // {
+          //   name: "Cấu hình SePay",
+          //   path: "/finance-management/momo"
+          // }
         ]
-    },
-    {
-        name: "Xác thực & Báo cáo",
-        path: "/verification-reporting",
-        icon: <Shield size={20} />
     },
     {
         name: "Cài đặt",
@@ -170,10 +161,7 @@ export default function Navbar() {
                     className="flex gap-3 items-center flex-1"
                     onClick={(e) => {
                       if (hasOptions) {
-                        // If it has options, prevent navigation on the main item if it's just a folder,
-                        // or allow navigation and just toggle. 
-                        // In this case, standard behavior is clicking the item goes to default, 
-                        // and clicking arrow toggles. But here we toggle on the whole row.
+                     
                       }
                     }}
                   >
