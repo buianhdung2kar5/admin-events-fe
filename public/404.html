@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Admin Events</title>
+    <script>
+      // GitHub Pages SPA redirect trick
+      // Khi GitHub Pages trả 404 (do SPA route như /login, /user-management, ...),
+      // script này encode lại path vào query string rồi redirect về index.html
+      var l = window.location;
+      l.replace(
+        l.protocol +
+          "//" +
+          l.hostname +
+          (l.port ? ":" + l.port : "") +
+          l.pathname
+            .split("/")
+            .slice(0, 1)
+            .join("/") +
+          "/?p=" +
+          encodeURIComponent(
+            l.pathname.slice(1) +
+              (l.search ? l.search : "") +
+              l.hash
+          )
+      );
+    </script>
+  </head>
+  <body></body>
+</html>

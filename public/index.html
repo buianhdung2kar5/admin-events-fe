@@ -24,7 +24,21 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <title>React App</title>
+    <title>Admin Events</title>
+    <!-- SPA route restore: decode path từ ?p= sau khi 404.html redirect -->
+    <script>
+      (function () {
+        var p = window.location.search.match(/[?&]p=([^&]*)/);
+        if (p) {
+          var decoded = decodeURIComponent(p[1]);
+          // split hash nếu có
+          var hashIdx = decoded.indexOf("#");
+          var hash = hashIdx !== -1 ? decoded.slice(hashIdx) : "";
+          var path = hashIdx !== -1 ? decoded.slice(0, hashIdx) : decoded;
+          window.history.replaceState(null, null, "/" + path + hash);
+        }
+      })();
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

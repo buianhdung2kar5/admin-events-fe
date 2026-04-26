@@ -24,7 +24,7 @@ function Layout() {
 
 function App() {
   return (
-    <BrowserRouter basename="/admin-events-fe">
+    <BrowserRouter>
       <AuthProvider>
         <Layout />
       </AuthProvider>
