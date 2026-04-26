@@ -40,8 +40,14 @@ jobs:
           CI: false          # Tắt "treat warnings as errors" của CRA
           GENERATE_SOURCEMAP: false
           
-      - name: 📄 Create 404.html fallback
-        run: cp build/index.html build/404.html
+      - name: 📄 Verify CNAME file exists (custom domain)
+        run: |
+          if [ ! -f build/CNAME ]; then
+            echo "events.net.vn" > build/CNAME
+            echo "CNAME file created"
+          else
+            echo "CNAME file already exists: $(cat build/CNAME)"
+          fi
 
       - name: 📤 Upload build artifact
         uses: actions/upload-artifact@v4
@@ -73,6 +79,9 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build
           publish_branch: gh-pages
+          # 🔑 QUAN TRỌNG: cóng này tự động inject CNAME vào gh-pages branch
+          # → custom domain events.net.vn được giữ nguyên sau mọi lần deploy
+          cname: events.net.vn
           commit_message: "🚀 deploy: ${{ github.event.head_commit.message }}"
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"
