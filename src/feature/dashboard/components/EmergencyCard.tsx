@@ -44,8 +44,8 @@ export default function EmergencyCard() {
             colorIcon: '#6B7280',
         },
         {
-            id: 'momo_pay',
-            title: "Callback Momo chưa xử lý",
+            id: 'sepay_callback',
+            title: "Callback SePay chưa xử lý",
             number: 3,
             icon: Clock,
             colorText: '#D08700',

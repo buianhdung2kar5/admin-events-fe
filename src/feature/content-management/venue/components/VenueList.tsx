@@ -6,17 +6,11 @@ import VenueFormModal from "./VenueFormModal";
 export default function VenueList() {
     const [venues, setVenues] = useState<VenueItem[]>(MockVenues);
     const [search, setSearch] = useState("");
-    const [filterCity, setFilterCity] = useState<string>("ALL");
     const [filterOwner, setFilterOwner] = useState<string>("ALL");
     const [filterStatus, setFilterStatus] = useState<string>("ALL");
     const [showFormModal, setShowFormModal] = useState(false);
     const [editTarget, setEditTarget] = useState<VenueItem | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<VenueItem | null>(null);
-
-    const cities = useMemo(() => {
-        const all = venues.map(v => v.city);
-        return ["ALL", ...Array.from(new Set(all))];
-    }, [venues]);
 
     const filtered = useMemo(() => {
         return venues.filter(v => {
@@ -24,23 +18,26 @@ export default function VenueList() {
                 v.name.toLowerCase().includes(search.toLowerCase()) ||
                 v.address.toLowerCase().includes(search.toLowerCase()) ||
                 v.ownerName.toLowerCase().includes(search.toLowerCase());
-            const matchCity = filterCity === "ALL" || v.city === filterCity;
             const matchOwner = filterOwner === "ALL" || v.ownerType === filterOwner;
             const matchStatus = filterStatus === "ALL" || v.status === filterStatus;
-            return matchSearch && matchCity && matchOwner && matchStatus;
+            return matchSearch && matchOwner && matchStatus;
         });
-    }, [venues, search, filterCity, filterOwner, filterStatus]);
+    }, [venues, search, filterOwner, filterStatus]);
 
     const handleSave = (data: Partial<VenueItem>) => {
         if (editTarget) {
+            // TODO: PUT /venues/{id}      (ADMIN only)
             setVenues(prev => prev.map(v => v.id === editTarget.id ? { ...v, ...data } : v));
         } else {
+            // TODO: POST /venues
             const newVenue: VenueItem = {
                 id: `v${String(Date.now()).slice(-4)}`,
                 name: data.name!,
                 address: data.address!,
-                city: data.city!,
                 capacity: data.capacity!,
+                latitude: data.latitude!,
+                longitude: data.longitude!,
+                mapUrl: data.mapUrl!,
                 ownerType: "ADMIN",
                 ownerName: "Quản trị hệ thống",
                 status: "ACTIVE",
@@ -63,6 +60,7 @@ export default function VenueList() {
 
     const confirmDelete = () => {
         if (!deleteTarget) return;
+        // TODO: DELETE /venues/{id}   (ADMIN only)
         setVenues(prev => prev.filter(v => v.id !== deleteTarget.id));
         setDeleteTarget(null);
     };
@@ -84,11 +82,6 @@ export default function VenueList() {
                     />
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                    <div className="relative">
-                        <select value={filterCity} onChange={e => setFilterCity(e.target.value)} className={selectCls}>
-                            {cities.map(c => <option key={c} value={c}>{c === "ALL" ? "Tất cả tỉnh/thành" : c}</option>)}
-                        </select>
-                    </div>
                     <select value={filterOwner} onChange={e => setFilterOwner(e.target.value)} className={selectCls}>
                         <option value="ALL">Tất cả chủ sở hữu</option>
                         <option value="ADMIN">Quản trị (ADMIN)</option>
@@ -115,7 +108,6 @@ export default function VenueList() {
                         <thead className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase font-semibold tracking-wider">
                             <tr>
                                 <th className="px-6 py-4">Địa điểm</th>
-                                <th className="px-6 py-4">Thành phố</th>
                                 <th className="px-6 py-4 text-center">Sức chứa</th>
                                 <th className="px-6 py-4">Chủ sở hữu</th>
                                 <th className="px-6 py-4 text-center">Sự kiện đang chạy</th>
@@ -126,7 +118,7 @@ export default function VenueList() {
                         <tbody className="divide-y divide-gray-50">
                             {filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-12 text-center text-gray-400 text-sm">
+                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400 text-sm">
                                         Không tìm thấy địa điểm nào
                                     </td>
                                 </tr>
@@ -144,9 +136,6 @@ export default function VenueList() {
                                                 </p>
                                             </div>
                                         </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="font-semibold text-gray-600">{venue.city}</span>
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         <div className="flex items-center justify-center gap-1 text-gray-700 font-bold">

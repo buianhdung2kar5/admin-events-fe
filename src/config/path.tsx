@@ -6,6 +6,7 @@ import FinancialManagement from "../pages/financial-management/page";
 import SettingsPage from "../pages/settings/page";
 import LoginPage from "../pages/login/page";
 import ProtectedRoute from "../auth/ProtectedRoute";
+import NewsDetailPage from "../pages/content-management/news-detail/page";
 
 export default function Path() {
     return [
@@ -30,6 +31,10 @@ export default function Path() {
         {
             path: "/user-management/:type?",
             element: <ProtectedRoute><UserManagement /></ProtectedRoute>,
+        },
+        {
+            path: "/content-management/news/:newsId",
+            element: <ProtectedRoute><NewsDetailPage /></ProtectedRoute>,
         },
         {
             path: "/content-management/:type?",

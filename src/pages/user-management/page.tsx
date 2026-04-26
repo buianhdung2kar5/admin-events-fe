@@ -1,6 +1,5 @@
 import ListUser from "../../feature/user-management/user/components/ListUser";
 import { UserCardData } from "../../feature/user-management/user/data/UserMockData";
-import { UserPlus } from "lucide-react";
 import GroupFilter from "../../feature/user-management/user/components/GroupFilter";
 import OrgList from "../../feature/user-management/organization/components/OrgList";
 import DocList from "../../feature/user-management/verify-document/components/DocList";
@@ -65,10 +64,6 @@ export default function UserManagement(){
                  <h1 className="text-2xl font-bold text-gray-800">{getTitle()}</h1>
                 <p className="text-gray-500 text-sm">Quản lý và phân quyền hệ thống</p>
                </div>
-               <button className="flex items-center gap-2 bg-[#0092B8] text-white px-5 py-2.5 rounded-xl hover:bg-[#007a99] transition-colors shadow-sm font-semibold">
-                <UserPlus size={20} />
-                Thêm mới
-               </button>
             </header>
 
             {cards.length > 0 && (

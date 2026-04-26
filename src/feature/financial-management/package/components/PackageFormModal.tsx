@@ -8,21 +8,11 @@ interface Props {
     onSave: (data: Partial<PackageItem>) => void;
 }
 
-const COLORS = [
-    { label: "Xanh dương", value: "bg-[#0092B8]" },
-    { label: "Tím", value: "bg-[#7C3AED]" },
-    { label: "Xanh lá", value: "bg-[#10B981]" },
-    { label: "Vàng", value: "bg-[#F59E0B]" },
-    { label: "Đỏ", value: "bg-[#EF4444]" },
-];
-
 export default function PackageFormModal({ pkg, onClose, onSave }: Props) {
     const [name, setName] = useState(pkg?.name ?? "");
     const [description, setDescription] = useState(pkg?.description ?? "");
     const [price, setPrice] = useState(String(pkg?.price ?? ""));
     const [durationDays, setDurationDays] = useState(String(pkg?.durationDays ?? ""));
-    const [maxEvents, setMaxEvents] = useState(String(pkg?.maxEvents ?? ""));
-    const [color, setColor] = useState(pkg?.color ?? "bg-[#0092B8]");
 
     const isEdit = !!pkg;
     const canSubmit = name.trim() && description.trim() && Number(durationDays) > 0 && Number(price) >= 0;
@@ -34,8 +24,6 @@ export default function PackageFormModal({ pkg, onClose, onSave }: Props) {
             description: description.trim(),
             price: Number(price),
             durationDays: Number(durationDays),
-            maxEvents: maxEvents ? Number(maxEvents) : undefined,
-            color,
         });
     };
 
@@ -48,7 +36,7 @@ export default function PackageFormModal({ pkg, onClose, onSave }: Props) {
             <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 flex flex-col gap-5">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className={`${color} p-2 rounded-xl`}>
+                        <div className="bg-[#0092B8] p-2 rounded-xl">
                             <Package size={20} className="text-white" />
                         </div>
                         <div>
@@ -85,22 +73,6 @@ export default function PackageFormModal({ pkg, onClose, onSave }: Props) {
                             <label className={labelCls}>Thời hạn (ngày) *</label>
                             <input type="number" min={1} value={durationDays} onChange={e => setDurationDays(e.target.value)}
                                 placeholder="VD: 30" className={inputCls} />
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                        <label className={labelCls}>Số sự kiện tối đa (để trống = không giới hạn)</label>
-                        <input type="number" min={1} value={maxEvents} onChange={e => setMaxEvents(e.target.value)}
-                            placeholder="Không giới hạn" className={inputCls} />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className={labelCls}>Màu sắc</label>
-                        <div className="flex gap-2">
-                            {COLORS.map(c => (
-                                <button key={c.value} onClick={() => setColor(c.value)} title={c.label}
-                                    className={`w-9 h-9 rounded-xl ${c.value} transition-all ${color === c.value ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'opacity-70 hover:opacity-100'}`} />
-                            ))}
                         </div>
                     </div>
                 </div>

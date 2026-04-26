@@ -108,10 +108,10 @@ export const MockUsers: UserItem[] = [
         actionLogs: [
             { id: "l1", action: "Đăng nhập", detail: "Đăng nhập thành công", timestamp: "2026-04-25T08:30:00", ip: "14.241.xxx.xxx" },
             { id: "l2", action: "Đăng ký sự kiện", detail: "Đăng ký Lễ hội Ánh sáng 2026", timestamp: "2026-04-24T14:00:00", ip: "14.241.xxx.xxx" },
-            { id: "l3", action: "Nạp coin", detail: "Nạp 500 coin qua Momo", timestamp: "2026-04-20T10:15:00", ip: "14.241.xxx.xxx" },
+            { id: "l3", action: "Nạp coin", detail: "Nạp 500 coin qua SePay", timestamp: "2026-04-20T10:15:00", ip: "14.241.xxx.xxx" },
         ],
         coinHistory: [
-            { id: "c1", type: "earn", amount: 500, description: "Nạp Momo", date: "2026-04-20" },
+            { id: "c1", type: "earn", amount: 500, description: "Nạp SePay", date: "2026-04-20" },
             { id: "c2", type: "spend", amount: -200, description: "Mua vé Vietnam Youth Forum", date: "2026-03-05" },
             { id: "c3", type: "earn", amount: 100, description: "Thưởng hoàn thành hồ sơ", date: "2024-01-20" },
         ],
@@ -196,7 +196,7 @@ export const MockUsers: UserItem[] = [
             { id: "l12", action: "Đăng nhập", detail: "Đăng nhập thành công", timestamp: "2026-04-24T20:00:00", ip: "118.70.xxx.xxx" },
         ],
         coinHistory: [
-            { id: "c9", type: "earn", amount: 700, description: "Nạp Momo", date: "2026-02-14" },
+            { id: "c9", type: "earn", amount: 700, description: "Nạp SePay", date: "2026-02-14" },
             { id: "c10", type: "spend", amount: -80, description: "Mua vé Music Fest", date: "2024-10-15" },
         ],
     },

@@ -1,5 +1,4 @@
 import { useParams } from "react-router-dom";
-import { Plus } from "lucide-react";
 import GroupFilter from "../../feature/user-management/user/components/GroupFilter";
 
 import CategoryList from "../../feature/content-management/category/components/CategoryList";
@@ -22,6 +21,10 @@ import { VenueCardData } from "../../feature/content-management/venue/data/Venue
 
 export default function ContentManagement() {
     const { type } = useParams();
+
+    if (type === "attendance") {
+        return <AttendanceList />;
+    }
 
     const getTitle = () => {
         switch (type) {
@@ -51,19 +54,7 @@ export default function ContentManagement() {
         }
     };
 
-    const getBtnText = () => {
-        switch (type) {
-            case "category": return "Tạo danh mục";
-            case "event": return "Tạo sự kiện";
-            case "featured": return "Thêm sự kiện nổi bật";
-            case "news": return "Tạo tin tức";
-            case "notification": return "Tạo thông báo";
-            case "venue": return "Thêm địa điểm";
-            case "recruitment": return null;
-            case "attendance": return null;
-            default: return "Thêm mới";
-        }
-    };
+
 
     const currentCardData = () => {
         switch (type) {
@@ -74,12 +65,6 @@ export default function ContentManagement() {
             case "notification": return NotifCardData;
             case "recruitment": return RecruitmentCardData;
             case "venue": return VenueCardData;
-            case "attendance": return [
-                { title: "Tổng sự kiện", value: 4 },
-                { title: "Có dữ liệu điểm danh", value: 2, color: "text-blue-600" },
-                { title: "Tổng check-in", value: 5, color: "text-green-600" },
-                { title: "Tổng participants", value: 6, color: "text-[#0092B8]" },
-            ];
             default: return CategoryCardData;
         }
     };
@@ -92,7 +77,6 @@ export default function ContentManagement() {
             case "news": return <NewsList />;
             case "notification": return <NotifList />;
             case "recruitment": return <RecruitmentList />;
-            case "attendance": return <AttendanceList />;
             case "venue": return <VenueList />;
             default: return <CategoryList />;
         }
@@ -107,12 +91,6 @@ export default function ContentManagement() {
                     <h1 className="text-2xl font-bold text-gray-800">{getTitle()}</h1>
                     <p className="text-gray-500 text-sm">{getDescription()}</p>
                 </div>
-                {getBtnText() && (
-                    <button className="flex items-center gap-2 bg-[#0092B8] text-white px-5 py-2.5 rounded-xl hover:bg-[#007a99] transition-colors shadow-sm font-semibold">
-                        <Plus size={20} />
-                        {getBtnText()}
-                    </button>
-                )}
             </header>
 
             {/* Grid layout adapts to number of cards (8 vs 4/6) */}

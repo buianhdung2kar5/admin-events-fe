@@ -108,8 +108,8 @@ export default function FinanceDashboard() {
                         <span className="font-bold text-sm">Cộng / Trừ Coin User</span>
                         <ArrowRight size={16} className="opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                     </button>
-                    {/* <button onClick={() => navigate("/finance-management/momo")} className="flex items-center justify-between p-4 bg-pink-50 text-pink-600 hover:bg-pink-600 hover:text-white rounded-2xl transition-all group">
-                        <span className="font-bold text-sm">Kiểm tra Momo Callback</span>
+                    {/* <button onClick={() => navigate("/finance-management/sepay")} className="flex items-center justify-between p-4 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-2xl transition-all group">
+                        <span className="font-bold text-sm">Kiểm tra SePay Callback</span>
                         <ArrowRight size={16} className="opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                     </button> */}
                 </div>

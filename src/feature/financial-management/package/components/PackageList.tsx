@@ -8,6 +8,7 @@ export default function PackageList() {
     const [userPackages] = useState(MockUserPackages);
     const [search, setSearch] = useState("");
     const [filterStatus, setFilterStatus] = useState<"ALL" | "active" | "inactive">("ALL");
+    const [filterPackage, setFilterPackage] = useState<string>("ALL");
     const [activeTab, setActiveTab] = useState<"packages" | "userpackages">("packages");
     const [showForm, setShowForm] = useState(false);
     const [editTarget, setEditTarget] = useState<PackageItem | null>(null);
@@ -22,20 +23,41 @@ export default function PackageList() {
     }, [packages, search, filterStatus]);
 
     const filteredUserPkgs = useMemo(() => {
-        return userPackages.filter(up =>
-            up.userName.toLowerCase().includes(search.toLowerCase()) ||
-            up.packageName.toLowerCase().includes(search.toLowerCase())
-        );
-    }, [userPackages, search]);
+        // TODO: GET /packages/user-packages?userId={id} (for admin to check specific user)
+        // Hiện tại filter ở frontend để mô phỏng Admin tìm kiếm user.
+        return userPackages.filter(up => {
+            const matchSearch = up.userName.toLowerCase().includes(search.toLowerCase()) ||
+                up.packageName.toLowerCase().includes(search.toLowerCase());
+            const matchPkg = filterPackage === "ALL" || up.packageName === filterPackage;
+            return matchSearch && matchPkg;
+        });
+    }, [userPackages, search, filterPackage]);
 
     const handleToggle = (id: string) => {
-        setPackages(prev => prev.map(p => p.id === id ? { ...p, isActive: !p.isActive } : p));
+        setPackages(prev => prev.map(p => {
+            if (p.id === id) {
+                // TODO: PUT /packages/{id} body: { "isActive": !p.isActive }
+                // User đã mua vẫn sử dụng bình thường. User chưa mua không thấy package này.
+                return { ...p, isActive: !p.isActive };
+            }
+            return p;
+        }));
     };
 
     const handleSave = (data: Partial<PackageItem>) => {
         if (editTarget) {
+            // TODO: PUT /packages/{id}
             setPackages(prev => prev.map(p => p.id === editTarget.id ? { ...p, ...data } : p));
         } else {
+            // Quy tắc: name phải unique
+            if (packages.some(p => p.name.toLowerCase() === data.name?.toLowerCase())) {
+                alert("Tên gói dịch vụ đã tồn tại (name phải unique)! Vui lòng chọn tên khác.");
+                return;
+            }
+
+            // TODO: POST /packages
+            // price = 0 -> user không cần thanh toán
+            // isActive = false -> user không thấy được package
             const newPkg: PackageItem = {
                 id: `pkg${Date.now()}`,
                 name: data.name!,
@@ -44,8 +66,7 @@ export default function PackageList() {
                 durationDays: data.durationDays!,
                 isActive: true,
                 soldCount: 0,
-                revenue: 0,
-                color: "bg-[#0092B8]"
+                revenue: 0
             };
             setPackages(prev => [newPkg, ...prev]);
         }
@@ -100,6 +121,24 @@ export default function PackageList() {
                         </button>
                     </div>
                 )}
+                {activeTab === "userpackages" && (
+                    <div className="flex gap-2">
+                        <select value={filterPackage} onChange={e => setFilterPackage(e.target.value)}
+                            className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-600 outline-none focus:border-[#0092B8] bg-white cursor-pointer max-w-[200px]">
+                            <option value="ALL">Tất cả các gói</option>
+                            <optgroup label="Đang bán">
+                                {packages.filter(p => p.isActive).map(p => (
+                                    <option key={p.id} value={p.name}>{p.name}</option>
+                                ))}
+                            </optgroup>
+                            <optgroup label="Ngừng bán">
+                                {packages.filter(p => !p.isActive).map(p => (
+                                    <option key={p.id} value={p.name}>{p.name}</option>
+                                ))}
+                            </optgroup>
+                        </select>
+                    </div>
+                )}
             </div>
 
             {activeTab === "packages" ? (
@@ -107,14 +146,8 @@ export default function PackageList() {
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                     {filtered.map(pkg => (
                         <div key={pkg.id} className={`relative bg-white rounded-xl p-5 shadow-sm border ${pkg.isActive ? 'border-gray-100' : 'border-gray-200 opacity-70'} hover:shadow-md transition-all duration-200 flex flex-col group overflow-hidden`}>
-                            {pkg.isPopular && (
-                                <div className="absolute top-4 right-[-35px] bg-[#FBBF24] text-white text-[9px] font-semibold px-10 py-1.5 rotate-45 shadow-sm uppercase tracking-wide z-10 flex items-center gap-1">
-                                    <Zap size={10} fill="white" /> Phổ biến
-                                </div>
-                            )}
-
                             <div className="flex items-center gap-4 mb-5">
-                                <div className={`${pkg.color} p-2.5 rounded-lg shadow-md`}>
+                                <div className="bg-[#0092B8] p-2.5 rounded-lg shadow-md">
                                     <Package size={22} className="text-white" />
                                 </div>
                                 <div>
@@ -128,7 +161,7 @@ export default function PackageList() {
                                     {pkg.price === 0 ? "Miễn phí" : `${pkg.price.toLocaleString()}đ`}
                                 </span>
                             </div>
-                            <p className="text-xs text-gray-400 font-bold mb-5">⏳ {pkg.durationDays} ngày{pkg.maxEvents ? ` · tối đa ${pkg.maxEvents} sự kiện` : " · không giới hạn"}</p>
+                            <p className="text-xs text-gray-400 font-bold mb-5">⏳ {pkg.durationDays} ngày</p>
 
                             <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 border-t border-gray-50 pt-4 mb-5">
                                 <div className="flex flex-col">

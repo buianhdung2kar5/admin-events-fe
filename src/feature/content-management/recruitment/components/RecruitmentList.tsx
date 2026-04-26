@@ -117,10 +117,15 @@ export default function RecruitmentList() {
                                         </div>
                                     </td>
                                     <td className="px-5 py-4">
-                                        <div className="flex flex-col gap-1 max-w-[300px]">
-                                            <span className="font-bold text-gray-800 truncate">{r.eventTitle}</span>
-                                            <span className="text-xs text-[#0092B8] font-semibold bg-blue-50 px-2 py-0.5 rounded-lg w-fit">{r.role}</span>
-                                            <span className="text-xs text-gray-400">{new Date(r.createdAt).toLocaleDateString("vi-VN")}</span>
+                                        <div className="flex items-center gap-4">
+                                            <img src={r.bannerUrl} alt="" className="w-20 h-12 object-cover rounded-xl shadow-sm" />
+                                            <div className="flex flex-col gap-1 max-w-[250px]">
+                                                <span className="font-bold text-gray-800 truncate" title={r.eventTitle}>{r.eventTitle}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-[#0092B8] font-semibold bg-blue-50 px-2 py-0.5 rounded-lg w-fit">{r.role}</span>
+                                                    <span className="text-xs text-gray-400">{new Date(r.createdAt).toLocaleDateString("vi-VN")}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="px-5 py-4 text-center">

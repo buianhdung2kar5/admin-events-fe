@@ -1,6 +1,5 @@
 {
   "name": "admin-events",
-
   "version": "0.1.0",
   "private": true,
   "homepage": "https://events.net.vn/",
@@ -9,10 +8,13 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^13.5.0",
+    "@types/leaflet": "^1.9.21",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.8.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-hook-form": "^7.72.1",
+    "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.14.0",
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4"
@@ -22,7 +24,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "deploy":"gh-pages -d build"
+    "deploy": "gh-pages -d build"
   },
   "eslintConfig": {
     "extends": [

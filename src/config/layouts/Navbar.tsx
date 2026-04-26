@@ -32,10 +32,10 @@ const navItems = [
             name: "Xác thực tài liệu",
             path: "/user-management/verify-document"
           },
-          {
-            name: "Nhật ký hoạt động",
-            path: "/user-management/activity"
-          }
+          // {
+          //   name: "Nhật ký hoạt động",
+          //   path: "/user-management/activity"
+          // }
         ]
     },
     {
@@ -101,7 +101,7 @@ const navItems = [
           },
           // {
           //   name: "Cấu hình SePay",
-          //   path: "/finance-management/momo"
+          //   path: "/finance-management/sepay"
           // }
         ]
     },

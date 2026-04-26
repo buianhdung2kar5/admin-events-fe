@@ -7,10 +7,6 @@ export interface PackageItem {
     isActive: boolean;
     soldCount: number;
     revenue: number;
-    maxEvents?: number;
-    highlight?: string;
-    color: string;
-    isPopular?: boolean;
 }
 
 export interface UserPackageItem {
@@ -33,10 +29,7 @@ export const MockPackages: PackageItem[] = [
         durationDays: 30,
         isActive: true,
         soldCount: 214,
-        revenue: 63986000,
-        maxEvents: 3,
-        highlight: "Phù hợp khởi đầu",
-        color: "bg-[#0092B8]"
+        revenue: 63986000
     },
     {
         id: "pkg002",
@@ -46,11 +39,7 @@ export const MockPackages: PackageItem[] = [
         durationDays: 90,
         isActive: true,
         soldCount: 521,
-        revenue: 416279000,
-        maxEvents: 10,
-        highlight: "Phổ biến nhất",
-        color: "bg-[#7C3AED]",
-        isPopular: true
+        revenue: 416279000
     },
     {
         id: "pkg003",
@@ -60,9 +49,7 @@ export const MockPackages: PackageItem[] = [
         durationDays: 365,
         isActive: true,
         soldCount: 88,
-        revenue: 219912000,
-        highlight: "Toàn quyền năng",
-        color: "bg-[#10B981]"
+        revenue: 219912000
     },
     {
         id: "pkg004",
@@ -72,10 +59,7 @@ export const MockPackages: PackageItem[] = [
         durationDays: 60,
         isActive: true,
         soldCount: 342,
-        revenue: 50958000,
-        maxEvents: 5,
-        highlight: "Dành cho sinh viên",
-        color: "bg-[#F59E0B]"
+        revenue: 50958000
     },
     {
         id: "pkg005",
@@ -85,10 +69,7 @@ export const MockPackages: PackageItem[] = [
         durationDays: 7,
         isActive: false,
         soldCount: 1204,
-        revenue: 0,
-        maxEvents: 1,
-        highlight: "Đã ngừng bán",
-        color: "bg-gray-400"
+        revenue: 0
     }
 ];
 

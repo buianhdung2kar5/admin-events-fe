@@ -242,8 +242,6 @@ export default function OrgList({ filter }: OrgListProps) {
     };
 
     const confirmSuspend = () => {
-        if (!suspendReason.trim()) return;
-        
         const targets = suspendTargetId ? [suspendTargetId] : selectedIds;
         
         // TODO: call POST /api/admin/bulk-suspend { entityType: "ORG", entityIds: targets, reason: suspendReason, durationDays: suspendDuration }
@@ -268,6 +266,16 @@ export default function OrgList({ filter }: OrgListProps) {
         setData(prev => prev.map(o => o.id === id ? { ...o, status: "Active" as OrgStatus } : o));
         if (detailOrg?.id === id) {
             setDetailOrg({ ...detailOrg, status: "Active" as OrgStatus });
+        }
+    };
+
+    const handleDelete = (id: string) => {
+        // TODO: DELETE /users/{id} (soft-delete)
+        // -> status = DISABLED
+        // Không tự động hạ role, cần can thiệp DB. Mock action: chuyển trạng thái sang Blocked hoặc loại khỏi danh sách
+        setData(prev => prev.map(o => o.id === id ? { ...o, status: "Blocked" as OrgStatus } : o));
+        if (detailOrg?.id === id) {
+            setDetailOrg({ ...detailOrg, status: "Blocked" as OrgStatus });
         }
     };
 
@@ -389,6 +397,10 @@ export default function OrgList({ filter }: OrgListProps) {
                                                         <CheckCircle2 size={17} />
                                                     </button>
                                                 )}
+                                                <button onClick={() => handleDelete(org.id)} title="Hạ cấp / Xóa tổ chức (Soft Delete)"
+                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all">
+                                                    <Trash2 size={17} />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -442,24 +454,13 @@ export default function OrgList({ filter }: OrgListProps) {
                             <p className="text-sm text-red-500/80">Bạn đang chuẩn bị khóa tài khoản tổ chức. Tổ chức sẽ không thể đăng nhập hoặc tạo sự kiện mới trong thời gian bị khóa.</p>
                         </div>
                         <div className="p-6 flex flex-col gap-5">
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold text-gray-500 uppercase">Thời gian khóa (ngày) <span className="text-red-500">*</span></label>
-                                <input type="number" min="1" value={suspendDuration} onChange={e => setSuspendDuration(Number(e.target.value))} className="border border-red-200 rounded-xl px-4 py-3 text-base font-bold outline-none focus:border-red-500" />
-                            </div>
-                            
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold text-gray-500 uppercase">Lý do khóa <span className="text-red-500">*</span></label>
-                                <textarea rows={3} value={suspendReason} onChange={e => setSuspendReason(e.target.value)} placeholder="Nhập lý do khóa tổ chức chi tiết..." className="border border-red-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-red-500 resize-none" />
-                            </div>
-
-                            <div className="flex items-center gap-3 mt-4">
+                            <div className="flex items-center gap-3">
                                 <button onClick={() => setIsSuspendModalOpen(false)} className="flex-1 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
                                     Hủy
                                 </button>
                                 <button 
                                     onClick={confirmSuspend} 
-                                    disabled={!suspendReason.trim() || suspendDuration <= 0}
-                                    className="flex-1 py-3 text-sm font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                    className="flex-1 py-3 text-sm font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors flex items-center justify-center gap-2">
                                     Xác nhận Khóa
                                 </button>
                             </div>

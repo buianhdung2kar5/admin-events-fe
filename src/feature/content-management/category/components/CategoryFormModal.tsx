@@ -9,23 +9,9 @@ interface Props {
     onClose: () => void;
 }
 
-// Tự động tạo type từ tên tiếng Việt → UPPER_SNAKE_CASE tiếng Anh
-// VD: "Địa điểm" → "DIA_DIEM", "Lĩnh vực" → "LINH_VUC"
-const generateType = (name: string): string => {
-    return name
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")   // bỏ dấu
-        .replace(/đ/gi, "d")               // đ → d
-        .trim()
-        .toUpperCase()
-        .replace(/\s+/g, "_")              // khoảng trắng → _
-        .replace(/[^A-Z0-9_]/g, "");       // bỏ ký tự đặc biệt
-};
-
 export default function CategoryFormModal({ category, mode, onClose }: Props) {
     const [name, setName] = useState(category?.name || "");
-    // type được tính live từ name, chỉ cho edit tay nếu cần
-    const autoType = generateType(name);
+    const [type, setType] = useState(category?.type || "");
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -61,6 +47,20 @@ export default function CategoryFormModal({ category, mode, onClose }: Props) {
                         />
                     </div>
 
+                    {/* Type danh mục */}
+                    <div className="flex flex-col gap-2">
+                        <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                            TYPE <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={type}
+                            onChange={(e) => setType(e.target.value.toUpperCase())}
+                            placeholder="VD: LOCATION, DOMAIN..."
+                            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#0092B8] focus:ring-2 focus:ring-[#0092B8]/20 transition-all uppercase"
+                        />
+                        <p className="text-[10px] text-gray-400 font-medium italic">Chú thích: Nhập tên của danh mục bằng tiếng Anh, viết liền không dấu.</p>
+                    </div>
 
                     {mode === "edit" && (
                         <div className="flex items-start gap-2.5 px-4 py-3 bg-amber-50 rounded-xl border border-amber-100">
@@ -79,7 +79,7 @@ export default function CategoryFormModal({ category, mode, onClose }: Props) {
                     </button>
                     <button
                         onClick={onClose}
-                        disabled={!name.trim()}
+                        disabled={!name.trim() || !type.trim()}
                         className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#0092B8] hover:bg-[#007a99] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {mode === "create" ? "Tạo danh mục" : "Lưu thay đổi"}

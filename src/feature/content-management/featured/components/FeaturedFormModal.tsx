@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Calendar, Hash, Image as ImageIcon } from "lucide-react";
-import { FeaturedItem } from "../data/FeaturedMockData";
+import { FeaturedItem, MockFeatured } from "../data/FeaturedMockData";
 import { MockEvents, EventItem } from "../../event/data/EventMockData";
 
 interface Props {
@@ -11,9 +11,9 @@ interface Props {
 
 export default function FeaturedFormModal({ featuredEvent, mode, onClose }: Props) {
     const [selectedEventId, setSelectedEventId] = useState(featuredEvent?.eventId || "");
-    const [priority, setPriority] = useState(featuredEvent?.order || 1);
-    const [startTime, setStartTime] = useState(featuredEvent?.startTime ? new Date(featuredEvent.startTime).toISOString().slice(0, 16) : "");
-    const [endTime, setEndTime] = useState(featuredEvent?.endTime ? new Date(featuredEvent.endTime).toISOString().slice(0, 16) : "");
+    const [priority, setPriority] = useState(featuredEvent?.priority || 1);
+    const [startDate, setStartDate] = useState(featuredEvent?.startDate ? new Date(featuredEvent.startDate).toISOString().slice(0, 16) : "");
+    const [endDate, setEndDate] = useState(featuredEvent?.endDate ? new Date(featuredEvent.endDate).toISOString().slice(0, 16) : "");
 
     const selectedEventObj = MockEvents.find(e => e.id === selectedEventId);
 
@@ -56,7 +56,7 @@ export default function FeaturedFormModal({ featuredEvent, mode, onClose }: Prop
                             className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#0092B8] focus:ring-2 focus:ring-[#0092B8]/20 transition-all bg-white font-medium disabled:bg-gray-50 disabled:text-gray-500"
                         >
                             <option value="" disabled>-- Chọn một sự kiện --</option>
-                            {MockEvents.map(event => (
+                            {MockEvents.filter(e => e.status === "PUBLISHED" && (e.id === featuredEvent?.eventId || !MockFeatured.some(f => f.eventId === e.id))).map(event => (
                                 <option key={event.id} value={event.id}>{event.title}</option>
                             ))}
                         </select>
@@ -87,8 +87,8 @@ export default function FeaturedFormModal({ featuredEvent, mode, onClose }: Prop
                             <label className="text-xs font-bold text-gray-600 uppercase tracking-wide flex items-center gap-1.5"><Calendar size={14}/> Bắt đầu hiển thị <span className="text-red-500">*</span></label>
                             <input 
                                 type="datetime-local" 
-                                value={startTime}
-                                onChange={(e) => setStartTime(e.target.value)}
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
                                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#0092B8] focus:ring-2 focus:ring-[#0092B8]/20 transition-all text-gray-700" 
                             />
                         </div>
@@ -96,8 +96,8 @@ export default function FeaturedFormModal({ featuredEvent, mode, onClose }: Prop
                             <label className="text-xs font-bold text-gray-600 uppercase tracking-wide flex items-center gap-1.5"><Calendar size={14}/> Kết thúc hiển thị <span className="text-red-500">*</span></label>
                             <input 
                                 type="datetime-local" 
-                                value={endTime}
-                                onChange={(e) => setEndTime(e.target.value)}
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
                                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#0092B8] focus:ring-2 focus:ring-[#0092B8]/20 transition-all text-gray-700" 
                             />
                         </div>
@@ -126,7 +126,7 @@ export default function FeaturedFormModal({ featuredEvent, mode, onClose }: Prop
                     </button>
                     <button 
                         onClick={handleSave} 
-                        disabled={!selectedEventId || !startTime || !endTime}
+                        disabled={!selectedEventId || !startDate || !endDate}
                         className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#0092B8] hover:bg-[#007a99] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {mode === "create" ? "Thêm nổi bật" : "Lưu thay đổi"}

@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Edit3, Trash2, Clock, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit3, Trash2, Clock, Plus, X, Eye } from "lucide-react";
 import { MockFeatured, FeaturedItem } from "../data/FeaturedMockData";
 import FeaturedFormModal from "./FeaturedFormModal";
+import FeaturedDetailModal from "./FeaturedDetailModal";
 
 export default function FeaturedList() {
     const [featured, setFeatured] = useState<FeaturedItem[]>(MockFeatured);
@@ -11,11 +12,13 @@ export default function FeaturedList() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedFeatured, setSelectedFeatured] = useState<FeaturedItem | null>(null);
     const [formMode, setFormMode] = useState<"create" | "edit">("create");
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [selectedDetailItem, setSelectedDetailItem] = useState<FeaturedItem | null>(null);
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 6;
-    const sortedFeatured = [...featured].sort((a, b) => a.order - b.order);
+    const sortedFeatured = [...featured].sort((a, b) => a.priority - b.priority);
     const totalPages = Math.ceil(sortedFeatured.length / itemsPerPage);
     const paginatedItems = sortedFeatured.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -43,10 +46,15 @@ export default function FeaturedList() {
         setIsFormOpen(true);
     };
 
+    const handleViewDetail = (item: FeaturedItem) => {
+        setSelectedDetailItem(item);
+        setIsDetailOpen(true);
+    };
+
     const resequenceOrder = (items: FeaturedItem[]) => {
         return items
-            .sort((a, b) => a.order - b.order)
-            .map((item, index) => ({ ...item, order: index + 1 }));
+            .sort((a, b) => a.priority - b.priority)
+            .map((item, index) => ({ ...item, priority: index + 1 }));
     };
 
     const handleDelete = (id: string) => {
@@ -144,7 +152,7 @@ export default function FeaturedList() {
                                             </div>
                                         </td>
                                         <td className="px-5 py-4 text-center">
-                                            <span className="font-bold text-[#0092B8] text-lg">{item.order}</span>
+                                            <span className="font-bold text-[#0092B8] text-lg">{item.priority}</span>
                                         </td>
                                         <td className="px-5 py-4">
                                             <div className="flex items-center gap-4">
@@ -159,7 +167,7 @@ export default function FeaturedList() {
                                             <div className="flex flex-col gap-1 text-xs text-gray-600">
                                                 <div className="flex items-center gap-2">
                                                     <Clock size={13} className="text-gray-400" />
-                                                    <span className="font-semibold">{new Date(item.startTime).toLocaleString("vi-VN")}</span>
+                                                    <span className="font-semibold">{new Date(item.startDate).toLocaleString("vi-VN")}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-[13px] flex justify-center"><div className="w-0.5 h-3 bg-gray-200"></div></div>
@@ -167,7 +175,7 @@ export default function FeaturedList() {
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <Clock size={13} className="text-gray-400" />
-                                                    <span className="font-semibold text-gray-500">{new Date(item.endTime).toLocaleString("vi-VN")}</span>
+                                                    <span className="font-semibold text-gray-500">{new Date(item.endDate).toLocaleString("vi-VN")}</span>
                                                 </div>
                                             </div>
                                         </td>
@@ -181,6 +189,9 @@ export default function FeaturedList() {
                                         </td>
                                         <td className="px-5 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
+                                                <button onClick={() => handleViewDetail(item)} className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all" title="Xem chi tiết">
+                                                    <Eye size={16} />
+                                                </button>
                                                 <button onClick={() => handleEdit(item)} className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-all" title="Chỉnh sửa">
                                                     <Edit3 size={16} />
                                                 </button>
@@ -231,12 +242,18 @@ export default function FeaturedList() {
                 </div>
             </div>
 
-            {/* Modal */}
+            {/* Modals */}
             {isFormOpen && (
                 <FeaturedFormModal 
                     featuredEvent={selectedFeatured} 
                     mode={formMode} 
                     onClose={() => setIsFormOpen(false)} 
+                />
+            )}
+            {isDetailOpen && selectedDetailItem && (
+                <FeaturedDetailModal
+                    featuredEvent={selectedDetailItem}
+                    onClose={() => setIsDetailOpen(false)}
                 />
             )}
         </div>

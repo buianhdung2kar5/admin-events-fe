@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { X, Building2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, Building2, MapPin, CheckCircle2 } from "lucide-react";
 import { VenueItem } from "../data/VenueMockData";
+import MapPicker from "./MapPicker";
 
 interface Props {
     venue: VenueItem | null;
@@ -8,30 +9,86 @@ interface Props {
     onSave: (data: Partial<VenueItem>) => void;
 }
 
-const CITIES = ["Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Cần Thơ", "Huế", "Nha Trang", "Hải Phòng", "Bình Dương"];
-
 export default function VenueFormModal({ venue, onClose, onSave }: Props) {
     const [name, setName] = useState(venue?.name ?? "");
     const [address, setAddress] = useState(venue?.address ?? "");
-    const [city, setCity] = useState(venue?.city ?? "Hồ Chí Minh");
     const [capacity, setCapacity] = useState(String(venue?.capacity ?? ""));
-    const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE'>(venue?.status ?? "ACTIVE");
+    const [latitude, setLatitude] = useState(String(venue?.latitude ?? ""));
+    const [longitude, setLongitude] = useState(String(venue?.longitude ?? ""));
+    const [mapUrl, setMapUrl] = useState(venue?.mapUrl ?? "");
+
+    // Map state
+    const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(
+        venue?.latitude && venue?.longitude ? [venue.latitude, venue.longitude] : undefined
+    );
+    const [pendingCenter, setPendingCenter] = useState<[number, number] | null>(
+        venue?.latitude && venue?.longitude ? [venue.latitude, venue.longitude] : null
+    );
+    const [isConfirmed, setIsConfirmed] = useState(!!venue?.latitude);
+    const [isSearching, setIsSearching] = useState(false);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const isEdit = !!venue;
-    const canSubmit = name.trim() && address.trim() && Number(capacity) > 0;
+    const canSubmit = name.trim() && address.trim() && Number(capacity) > 0 && isConfirmed;
+
+    // Auto-search when address changes (debounced 800ms)
+    useEffect(() => {
+        if (!address.trim()) return;
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lon = parseFloat(data[0].lon);
+                    setPendingCenter([lat, lon]);
+                    setMapCenter([lat, lon]);
+                    setIsConfirmed(false);
+                }
+            } catch {}
+            finally { setIsSearching(false); }
+        }, 800);
+        return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    }, [address]);
+
+    // When user clicks on map
+    const handleMapChange = (lat: number, lng: number) => {
+        setPendingCenter([lat, lng]);
+        setIsConfirmed(false);
+    };
+
+    const handleConfirmLocation = () => {
+        if (!pendingCenter) return;
+        const [lat, lng] = pendingCenter;
+        setLatitude(lat.toFixed(6));
+        setLongitude(lng.toFixed(6));
+        setMapUrl(`https://www.google.com/maps/search/?api=1&query=${lat.toFixed(6)},${lng.toFixed(6)}`);
+        setMapCenter([lat, lng]);
+        setIsConfirmed(true);
+    };
 
     const handleSubmit = () => {
         if (!canSubmit) return;
-        onSave({ name: name.trim(), address: address.trim(), city, capacity: Number(capacity), status });
+        onSave({
+            name: name.trim(),
+            address: address.trim(),
+            capacity: Number(capacity),
+            latitude: Number(latitude),
+            longitude: Number(longitude),
+            mapUrl: mapUrl.trim()
+        });
     };
 
     const inputCls = "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#0092B8] focus:ring-2 focus:ring-[#0092B8]/20 transition-all";
     const labelCls = "text-xs font-semibold text-gray-500 uppercase tracking-wide";
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 flex flex-col gap-5">
+        <div className="fixed inset-0 z-[100] overflow-y-auto">
+        <div className="flex min-h-full items-center justify-center py-10 px-4">
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-4xl p-6 flex flex-col gap-5">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -49,26 +106,29 @@ export default function VenueFormModal({ venue, onClose, onSave }: Props) {
                 </div>
 
                 {/* Fields */}
-                <div className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-1.5">
-                        <label className={labelCls}>Tên địa điểm *</label>
-                        <input type="text" value={name} onChange={e => setName(e.target.value)}
-                            placeholder="VD: Nhà Văn hóa Thanh niên TP.HCM" className={inputCls} />
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                        <label className={labelCls}>Địa chỉ *</label>
-                        <input type="text" value={address} onChange={e => setAddress(e.target.value)}
-                            placeholder="VD: 4 Phạm Ngọc Thạch, Bến Nghé" className={inputCls} />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-5">
+                    {/* Top Row: Basic Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="flex flex-col gap-1.5">
-                            <label className={labelCls}>Tỉnh/Thành phố</label>
-                            <select value={city} onChange={e => setCity(e.target.value)} className={inputCls}>
-                                {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
+                            <label className={labelCls}>Tên địa điểm *</label>
+                            <input type="text" value={name} onChange={e => setName(e.target.value)}
+                                placeholder="VD: Nhà Văn hóa Thanh niên TP.HCM" className={inputCls} />
                         </div>
+
+                        <div className="flex flex-col gap-1.5">
+                            <label className={labelCls}>
+                                Địa chỉ *
+                                {isSearching && <span className="ml-2 text-[10px] text-[#0092B8] font-normal normal-case italic">Đang tìm trên bản đồ...</span>}
+                            </label>
+                            <input
+                                type="text"
+                                value={address}
+                                onChange={e => { setAddress(e.target.value); setIsConfirmed(false); }}
+                                placeholder="VD: 4 Phạm Ngọc Thạch, Bến Nghé"
+                                className={inputCls}
+                            />
+                        </div>
+
                         <div className="flex flex-col gap-1.5">
                             <label className={labelCls}>Sức chứa (người) *</label>
                             <input type="number" min={1} value={capacity} onChange={e => setCapacity(e.target.value)}
@@ -76,18 +136,55 @@ export default function VenueFormModal({ venue, onClose, onSave }: Props) {
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-1.5">
-                        <label className={labelCls}>Trạng thái</label>
-                        <div className="flex gap-3">
-                            {(["ACTIVE", "INACTIVE"] as const).map(s => (
-                                <button key={s} onClick={() => setStatus(s)}
-                                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${status === s
-                                        ? (s === "ACTIVE" ? "bg-green-500 text-white border-green-500" : "bg-gray-500 text-white border-gray-500")
-                                        : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"}`}>
-                                    {s === "ACTIVE" ? "Đang hoạt động" : "Tạm ngừng"}
-                                </button>
-                            ))}
+                    {/* Map Row */}
+                    <div className="flex flex-col gap-2 w-full">
+                        <div className="flex items-center justify-between">
+                            <label className={labelCls}>
+                                Bản đồ vị trí
+                                <span className="text-[10px] font-normal italic lowercase ml-1">(Nhập địa chỉ để định vị · hoặc click trực tiếp để chỉnh)</span>
+                            </label>
+
+                            {/* Confirm button */}
+                            <button
+                                onClick={handleConfirmLocation}
+                                disabled={!pendingCenter || isConfirmed}
+                                className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                                    isConfirmed
+                                        ? 'bg-green-50 text-green-600 border border-green-200 cursor-default'
+                                        : pendingCenter
+                                            ? 'bg-[#0092B8] text-white hover:bg-[#007a99]'
+                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                }`}
+                            >
+                                <CheckCircle2 size={14} />
+                                {isConfirmed ? "Đã xác nhận vị trí" : "Xác nhận vị trí này"}
+                            </button>
                         </div>
+
+                        <MapPicker
+                            latitude={Number(latitude)}
+                            longitude={Number(longitude)}
+                            center={mapCenter}
+                            onChange={handleMapChange}
+                        />
+
+                        {/* Status banner below map */}
+                        {isConfirmed && latitude && longitude && (
+                            <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
+                                <MapPin size={12} className="flex-shrink-0" />
+                                <span className="font-semibold">Đã lưu toạ độ:</span>
+                                <span>{latitude}, {longitude}</span>
+                                <a href={mapUrl} target="_blank" rel="noreferrer" className="ml-auto text-[#0092B8] underline truncate max-w-[200px] hover:opacity-80">
+                                    Xem Google Maps
+                                </a>
+                            </div>
+                        )}
+                        {!isConfirmed && pendingCenter && (
+                            <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                                <MapPin size={12} className="flex-shrink-0" />
+                                <span>Vị trí chưa xác nhận — nhấn <strong>"Xác nhận vị trí này"</strong> để lưu toạ độ</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -100,6 +197,7 @@ export default function VenueFormModal({ venue, onClose, onSave }: Props) {
                     </button>
                 </div>
             </div>
+        </div>
         </div>
     );
 }

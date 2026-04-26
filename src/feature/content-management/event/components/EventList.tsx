@@ -15,6 +15,9 @@ export default function EventList() {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
     const [feedbackEvent, setFeedbackEvent] = useState<EventItem | null>(null);
+    const [isLockModalOpen, setIsLockModalOpen] = useState(false);
+    const [lockTargetId, setLockTargetId] = useState<string | null>(null);
+    const [lockReason, setLockReason] = useState("");
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -53,13 +56,34 @@ export default function EventList() {
         navigate(`/content-management/attendance?eventId=${eventId}`);
     };
 
-    const handleLockToggle = (id: string) => {
+    const handleLockToggle = (event: EventItem) => {
+        if (event.status !== "LOCKED") {
+            setLockTargetId(event.id);
+            setLockReason("");
+            setIsLockModalOpen(true);
+        } else {
+            setEvents(prev => prev.map(e => e.id === event.id ? { ...e, status: "PUBLISHED" } : e));
+        }
+    };
+
+    const confirmLockEvent = () => {
+        if (!lockTargetId || !lockReason.trim()) return;
+
         setEvents(prev => prev.map(e => {
-            if (e.id === id) {
-                return { ...e, status: e.status === "LOCKED" ? "PUBLISHED" : "LOCKED" };
+            if (e.id === lockTargetId) {
+                // TODO: call POST /admin/bulk-suspend
+                // body: {
+                //   "entityType": "EVENT",
+                //   "entityIds": [lockTargetId],
+                //   "reason": lockReason
+                // }
+                // Effect: event.status = LOCKED. Sự kiện vẫn hiển thị trong danh sách.
+                return { ...e, status: "LOCKED" };
             }
             return e;
         }));
+        setIsLockModalOpen(false);
+        setLockTargetId(null);
     };
 
     if (feedbackEvent) {
@@ -164,7 +188,7 @@ export default function EventList() {
                                         <td className="px-5 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
-                                                    onClick={() => handleLockToggle(event.id)}
+                                                    onClick={() => handleLockToggle(event)}
                                                     className={`p-2 rounded-xl transition-all ${
                                                         event.status === "LOCKED"
                                                             ? "text-amber-500 bg-amber-50 hover:bg-amber-100"
@@ -233,6 +257,41 @@ export default function EventList() {
             {/* Modals & Panels */}
             {isDetailOpen && selectedEvent && (
                 <EventDetailPanel event={selectedEvent} onClose={() => setIsDetailOpen(false)} />
+            )}
+
+            {/* Lock Event Modal */}
+            {isLockModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsLockModalOpen(false)} />
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden animate-[zoomIn_0.2s_ease]">
+                        <div className="flex flex-col gap-4 bg-amber-50 p-6">
+                            <h4 className="font-bold text-amber-600 text-lg flex items-center gap-2">
+                                <Lock size={20} /> Xác nhận khóa sự kiện
+                            </h4>
+                            <p className="text-sm text-amber-600/80">
+                                Sự kiện này sẽ bị khóa. Người dùng sẽ không thể đăng ký mới hoặc điểm danh. Những người đã đăng ký vẫn giữ nguyên trạng thái.
+                            </p>
+                        </div>
+                        <div className="p-6 flex flex-col gap-5">
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs font-bold text-gray-500 uppercase">Lý do khóa <span className="text-red-500">*</span></label>
+                                <textarea rows={3} value={lockReason} onChange={e => setLockReason(e.target.value)} placeholder="Nhập lý do khóa sự kiện (vd: Chứa nội dung không phù hợp)..." className="border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-amber-500 resize-none" />
+                            </div>
+
+                            <div className="flex items-center gap-3 mt-4">
+                                <button onClick={() => setIsLockModalOpen(false)} className="flex-1 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+                                    Hủy
+                                </button>
+                                <button 
+                                    onClick={confirmLockEvent} 
+                                    disabled={!lockReason.trim()}
+                                    className="flex-1 py-3 text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                    Xác nhận Khóa
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

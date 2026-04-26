@@ -8,6 +8,7 @@ export interface Recruitment {
     id: string;
     eventId: string;
     eventTitle: string;
+    bannerUrl: string;
     role: string; 
     description: string;
     reward: string;
@@ -48,6 +49,7 @@ export const MockRecruitments: Recruitment[] = [
         id: "r-001",
         eventId: "ev-001",
         eventTitle: "NEU Business Summit 2024",
+        bannerUrl: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=400&q=80",
         role: "Cộng tác viên",
         description: "Hỗ trợ điều phối chương trình, check-in khách mời, chụp ảnh sự kiện.",
         reward: "Áo CTV, Giấy chứng nhận, bữa ăn trong ngày",
@@ -62,6 +64,7 @@ export const MockRecruitments: Recruitment[] = [
         id: "r-002",
         eventId: "ev-002",
         eventTitle: "TechDay BK 2024",
+        bannerUrl: "https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?w=400&q=80",
         role: "Tình nguyện viên",
         description: "Hỗ trợ ban tổ chức chuẩn bị địa điểm, phục vụ khách hàng VIP.",
         reward: "Bữa ăn miễn phí, Giấy chứng nhận tham gia",
@@ -76,6 +79,7 @@ export const MockRecruitments: Recruitment[] = [
         id: "r-003",
         eventId: "ev-003",
         eventTitle: "Music Festival: Đêm Hội Ngoại Thương",
+        bannerUrl: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&q=80",
         role: "Cộng tác viên",
         description: "Hỗ trợ quảng bá, bán vé, setup sân khấu, dẫn chương trình phụ.",
         reward: "150.000 VNĐ/ngày, Vé VIP, Giấy chứng nhận",

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
     Users, Trash2, Eye, Coins,
-    ShieldOff, CheckSquare2, X, ShieldCheck
+    ShieldOff, CheckSquare2, X, ShieldCheck, ArrowUpCircle
 } from 'lucide-react';
 import { MockUsers, UserItem, getRoleDetails, UserRole, UserStatus } from '../data/UserMockData';
 import TableData, { Column } from '../../../../components/TableData';
@@ -83,8 +83,6 @@ export default function ListUser({ filter }: ListUserProps) {
     };
 
     const confirmSuspend = () => {
-        if (!suspendReason.trim()) return;
-        
         const targets = suspendTargetId ? [suspendTargetId] : selectedIds;
         
         // TODO: call POST /api/admin/bulk-suspend { entityType: "USER", entityIds: targets, reason: suspendReason, durationDays: suspendDuration }
@@ -110,6 +108,17 @@ export default function ListUser({ filter }: ListUserProps) {
         setData((prev) => prev.map((u) => u.id === id ? { ...u, status: "Active" as UserStatus } : u));
         if (detailUser?.id === id) {
             setDetailUser({ ...detailUser, status: "Active" as UserStatus });
+        }
+    };
+
+    const handleUpgrade = (id: string) => {
+        // TODO: PUT /verification-documents/{id}/approve
+        // Body: { "status": "APPROVED" }
+        // Auto: user.role = ORGANIZATION, verificationStatus = APPROVED
+        // Vì userOnlyData không hiển thị Organization nên ta sẽ lọc bỏ user này khỏi danh sách
+        setData((prev) => prev.filter((u) => u.id !== id));
+        if (detailUser?.id === id) {
+            setDetailUser(null);
         }
     };
 
@@ -233,6 +242,13 @@ export default function ListUser({ filter }: ListUserProps) {
                             <ShieldCheck size={17} />
                         </button>
                     )}
+                    <button
+                        title="Nâng cấp lên Organization"
+                        onClick={() => handleUpgrade(user.id)}
+                        className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all"
+                    >
+                        <ArrowUpCircle size={17} />
+                    </button>
                 </div>
             ),
         },
@@ -368,24 +384,13 @@ export default function ListUser({ filter }: ListUserProps) {
                             <p className="text-sm text-red-500/80">Bạn đang chuẩn bị khóa tài khoản người dùng. Người dùng sẽ không thể đăng nhập hoặc tham gia sự kiện trong thời gian bị khóa.</p>
                         </div>
                         <div className="p-6 flex flex-col gap-5">
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold text-gray-500 uppercase">Thời gian khóa (ngày) <span className="text-red-500">*</span></label>
-                                <input type="number" min="1" value={suspendDuration} onChange={e => setSuspendDuration(Number(e.target.value))} className="border border-red-200 rounded-xl px-4 py-3 text-base font-bold outline-none focus:border-red-500" />
-                            </div>
-                            
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold text-gray-500 uppercase">Lý do khóa <span className="text-red-500">*</span></label>
-                                <textarea rows={3} value={suspendReason} onChange={e => setSuspendReason(e.target.value)} placeholder="Nhập lý do khóa tài khoản chi tiết..." className="border border-red-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-red-500 resize-none" />
-                            </div>
-
-                            <div className="flex items-center gap-3 mt-4">
+                            <div className="flex items-center gap-3">
                                 <button onClick={() => setIsSuspendModalOpen(false)} className="flex-1 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
                                     Hủy
                                 </button>
                                 <button 
                                     onClick={confirmSuspend} 
-                                    disabled={!suspendReason.trim() || suspendDuration <= 0}
-                                    className="flex-1 py-3 text-sm font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                                    className="flex-1 py-3 text-sm font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors flex items-center justify-center gap-2">
                                     Xác nhận Khóa
                                 </button>
                             </div>
