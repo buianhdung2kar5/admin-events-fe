@@ -1,1 +1,30 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"/><link rel="icon" href="/favicon.ico"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Web site created using create-react-app"/><link rel="apple-touch-icon" href="/logo192.png"/><link rel="manifest" href="/manifest.json"/><title>React App</title><script defer="defer" src="/static/js/main.1d6bc348.js"></script><link href="/static/css/main.aa948cba.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Admin Events</title>
+    <script>
+      // GitHub Pages SPA redirect trick
+      // Khi GitHub Pages trả 404 (do SPA route như /login, /user-management, ...),
+      // script này encode lại path vào query string rồi redirect về index.html
+      var l = window.location;
+      l.replace(
+        l.protocol +
+          "//" +
+          l.hostname +
+          (l.port ? ":" + l.port : "") +
+          l.pathname
+            .split("/")
+            .slice(0, 1)
+            .join("/") +
+          "/?p=" +
+          encodeURIComponent(
+            l.pathname.slice(1) +
+              (l.search ? l.search : "") +
+              l.hash
+          )
+      );
+    </script>
+  </head>
+  <body></body>
+</html>
