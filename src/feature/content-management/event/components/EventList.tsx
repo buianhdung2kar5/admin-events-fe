@@ -1,35 +1,40 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Trash2, Eye, Calendar, MapPin, Users, Lock, Unlock, X, MessageSquare, ClipboardList } from "lucide-react";
-import { MockEvents, EventItem, getEventStatusStyles } from "../data/EventMockData";
-import EventDetailPanel from "./EventDetailPanel";
-import EventFormModal from "./EventFormModal";
+import { getEventStatusStyles } from "../data/EventMockData";
 import FeedbackPanel from "./FeedbackPanel";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { EventsApi } from "../../../../services/events-management/EventsApi";
 
 export default function EventList() {
-    const [events, setEvents] = useState<EventItem[]>(MockEvents);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const navigate = useNavigate();
     
-    // UI State
-    const [isDetailOpen, setIsDetailOpen] = useState(false);
-    const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
-    const [feedbackEvent, setFeedbackEvent] = useState<EventItem | null>(null);
+    const [feedbackEvent, setFeedbackEvent] = useState<any | null>(null);
     const [isLockModalOpen, setIsLockModalOpen] = useState(false);
     const [lockTargetId, setLockTargetId] = useState<string | null>(null);
     const [lockReason, setLockReason] = useState("");
 
-    // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 6;
-    const totalPages = Math.ceil(events.length / itemsPerPage);
-    const paginatedEvents = events.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    
+    const { data: eventData, isLoading, isError } = useQuery({
+        queryKey: ["events", currentPage],
+        queryFn: async () => {
+            const response = await EventsApi.getAll(currentPage - 1, itemsPerPage);
+            return response;
+        },
+    });
+
+    const eventsList = eventData?.object?.content || [];
+    const totalPages = eventData?.object?.totalPages || 1;
+    const totalElements = eventData?.object?.totalElements || 0;
 
     const toggleSelectAll = () => {
-        if (selectedIds.length === paginatedEvents.length) {
+        if (selectedIds.length === eventsList.length && eventsList.length > 0) {
             setSelectedIds([]);
         } else {
-            setSelectedIds(paginatedEvents.map(e => e.id));
+            setSelectedIds(eventsList.map((e: any) => e.eventId.toString()));
         }
     };
 
@@ -37,51 +42,38 @@ export default function EventList() {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
 
-    const handleViewDetail = (event: EventItem) => {
-        setSelectedEvent(event);
-        setIsDetailOpen(true);
+    const handleViewDetail = (event: any) => {
+        navigate(`/content-management/events/${event.eventId}`);
     };
 
     const handleDelete = (id: string) => {
-        setEvents(prev => prev.filter(e => e.id !== id));
-        setSelectedIds(prev => prev.filter(i => i !== id));
+        // TODO: Call Delete API
     };
 
     const handleBulkDelete = () => {
-        setEvents(prev => prev.filter(e => !selectedIds.includes(e.id)));
-        setSelectedIds([]);
+        // TODO: Call Bulk Delete API
     };
 
     const handleAttendance = (eventId: string) => {
         navigate(`/content-management/attendance?eventId=${eventId}`);
     };
 
-    const handleLockToggle = (event: EventItem) => {
+    const handleLockToggle = (event: any) => {
         if (event.status !== "LOCKED") {
-            setLockTargetId(event.id);
+            setLockTargetId(event.eventId.toString());
             setLockReason("");
             setIsLockModalOpen(true);
         } else {
-            setEvents(prev => prev.map(e => e.id === event.id ? { ...e, status: "PUBLISHED" } : e));
+            // TODO: Call Unlock API
+            console.log("Unlock event", event.eventId);
         }
     };
 
     const confirmLockEvent = () => {
         if (!lockTargetId || !lockReason.trim()) return;
 
-        setEvents(prev => prev.map(e => {
-            if (e.id === lockTargetId) {
-                // TODO: call POST /admin/bulk-suspend
-                // body: {
-                //   "entityType": "EVENT",
-                //   "entityIds": [lockTargetId],
-                //   "reason": lockReason
-                // }
-                // Effect: event.status = LOCKED. Sự kiện vẫn hiển thị trong danh sách.
-                return { ...e, status: "LOCKED" };
-            }
-            return e;
-        }));
+        // TODO: call POST /admin/bulk-suspend
+        console.log("Lock event", lockTargetId, lockReason);
         setIsLockModalOpen(false);
         setLockTargetId(null);
     };
@@ -114,8 +106,27 @@ export default function EventList() {
             </div>
 
             {/* Table */}
-            <div className="w-full bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="w-full bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden min-h-[400px] flex flex-col relative">
+                {isLoading && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm gap-4">
+                        <div className="w-10 h-10 border-4 border-[#0092B8]/30 border-t-[#0092B8] rounded-full animate-spin" />
+                        <p className="text-gray-500 font-medium text-sm animate-pulse">Đang tải dữ liệu sự kiện...</p>
+                    </div>
+                )}
+                
+                {isError && !isLoading && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 gap-4">
+                        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500">
+                            <X size={32} />
+                        </div>
+                        <div className="text-center">
+                            <h3 className="font-bold text-gray-800 text-lg">Lỗi tải dữ liệu</h3>
+                            <p className="text-gray-500 text-sm mt-1">Không thể kết nối đến máy chủ. Vui lòng thử lại sau.</p>
+                        </div>
+                    </div>
+                )}
+
+                <div className="overflow-x-auto flex-1">
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs text-gray-500 uppercase bg-gray-50/50 border-b border-gray-100 font-semibold tracking-wider">
                             <tr>
@@ -124,7 +135,7 @@ export default function EventList() {
                                         <input
                                             type="checkbox"
                                             className="w-4 h-4 rounded-md border-gray-300 text-[#0092B8] focus:ring-[#0092B8]/20 cursor-pointer"
-                                            checked={selectedIds.length === paginatedEvents.length && paginatedEvents.length > 0}
+                                            checked={selectedIds.length === eventsList.length && eventsList.length > 0}
                                             onChange={toggleSelectAll}
                                         />
                                     </div>
@@ -137,28 +148,41 @@ export default function EventList() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {paginatedEvents.map((event) => {
+                            {!isLoading && !isError && eventsList.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} className="px-5 py-10 text-center text-gray-500 font-medium">
+                                        Chưa có sự kiện nào
+                                    </td>
+                                </tr>
+                            )}
+                            {eventsList.map((event: any) => {
                                 const statusStyle = getEventStatusStyles(event.status);
-                                const isSelected = selectedIds.includes(event.id);
+                                const isSelected = selectedIds.includes(event.eventId.toString());
+                                const locationCategory = event.categories?.find((c: any) => c.type === "LOCATION");
+                                const venue = locationCategory?.options?.[0]?.value || "Chưa cập nhật";
 
                                 return (
-                                    <tr key={event.id} className={`hover:bg-blue-50/30 transition-colors ${isSelected ? 'bg-blue-50/50' : ''}`}>
+                                    <tr key={event.eventId} className={`hover:bg-blue-50/30 transition-colors ${isSelected ? 'bg-blue-50/50' : ''}`}>
                                         <td className="p-5">
                                             <div className="flex items-center justify-center">
                                                 <input
                                                     type="checkbox"
                                                     className="w-4 h-4 rounded-md border-gray-300 text-[#0092B8] focus:ring-[#0092B8]/20 cursor-pointer"
                                                     checked={isSelected}
-                                                    onChange={() => toggleSelect(event.id)}
+                                                    onChange={() => toggleSelect(event.eventId.toString())}
                                                 />
                                             </div>
                                         </td>
                                         <td className="px-5 py-4">
                                             <div className="flex items-center gap-4">
-                                                <img src={event.bannerUrl} alt="" className="w-20 h-12 object-cover rounded-xl shadow-sm" />
+                                                <img src={event.banner || "https://placehold.co/100x60/f3f4f6/a1a1aa?text=No+Image"} alt="" className="w-20 h-12 object-cover rounded-xl shadow-sm" />
                                                 <div className="flex flex-col gap-1 max-w-[250px]">
                                                     <span className="font-bold text-gray-800 truncate" title={event.title}>{event.title}</span>
-                                                    <span className="text-xs text-gray-500 font-medium truncate">{event.organization}</span>
+                                                    {event.categories?.find((c: any) => c.type === "STYLE") && (
+                                                        <span className="text-xs text-gray-500 font-medium truncate">
+                                                            {event.categories.find((c: any) => c.type === "STYLE")?.options?.[0]?.value}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>
@@ -166,11 +190,13 @@ export default function EventList() {
                                             <div className="flex flex-col gap-1.5 text-xs text-gray-600">
                                                 <div className="flex items-center gap-2">
                                                     <Calendar size={13} className="text-gray-400" />
-                                                    <span className="font-medium">{new Date(event.startTime).toLocaleDateString("vi-VN")}</span>
+                                                    <span className="font-medium">
+                                                        {event.startTime ? new Date(event.startTime).toLocaleDateString("vi-VN") : "Chưa cập nhật"}
+                                                    </span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <MapPin size={13} className="text-gray-400" />
-                                                    <span className="truncate max-w-[150px]" title={event.venue}>{event.venue}</span>
+                                                    <span className="truncate max-w-[150px]" title={venue}>{venue}</span>
                                                 </div>
                                             </div>
                                         </td>
@@ -182,7 +208,7 @@ export default function EventList() {
                                         <td className="px-5 py-4 text-center">
                                             <div className="flex items-center justify-center gap-1.5 text-gray-600 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100 font-semibold text-xs">
                                                 <Users size={14} className="text-[#0092B8]" />
-                                                {event.statistics.totalRegistered} / {event.capacity}
+                                                {event.totalParticipants} / {event.capacity}
                                             </div>
                                         </td>
                                         <td className="px-5 py-4 text-right">
@@ -201,13 +227,13 @@ export default function EventList() {
                                                 <button onClick={() => setFeedbackEvent(event)} className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all" title="Khảo sát / Phản hồi">
                                                     <MessageSquare size={16} />
                                                 </button>
-                                                <button onClick={() => handleAttendance(event.id)} className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all" title="Điểm danh">
+                                                <button onClick={() => handleAttendance(event.eventId.toString())} className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all" title="Điểm danh">
                                                     <ClipboardList size={16} />
                                                 </button>
                                                 <button onClick={() => handleViewDetail(event)} className="p-2 text-gray-400 hover:text-[#0092B8] hover:bg-blue-50 rounded-xl transition-all" title="Chi tiết">
                                                     <Eye size={16} />
                                                 </button>
-                                                <button onClick={() => handleDelete(event.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Xóa">
+                                                <button onClick={() => handleDelete(event.eventId.toString())} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Xóa">
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
@@ -222,12 +248,12 @@ export default function EventList() {
                 {/* Pagination */}
                 <div className="flex items-center justify-between px-6 py-4 bg-white border-t border-gray-100">
                     <span className="text-sm text-gray-500 font-medium">
-                        Hiển thị <span className="font-bold text-gray-800">{(currentPage - 1) * itemsPerPage + 1}</span> đến <span className="font-bold text-gray-800">{Math.min(currentPage * itemsPerPage, events.length)}</span> trong <span className="font-bold text-gray-800">{events.length}</span> sự kiện
+                        Hiển thị <span className="font-bold text-gray-800">{eventsList.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</span> đến <span className="font-bold text-gray-800">{Math.min(currentPage * itemsPerPage, totalElements)}</span> trong <span className="font-bold text-gray-800">{totalElements}</span> sự kiện
                     </span>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            disabled={currentPage === 1}
+                            disabled={currentPage === 1 || totalPages === 0}
                             className="p-2 rounded-xl hover:bg-gray-100 disabled:opacity-50 transition-colors text-gray-600"
                         >
                             <ChevronLeft size={18} />
@@ -245,7 +271,7 @@ export default function EventList() {
                         </div>
                         <button
                             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                            disabled={currentPage === totalPages}
+                            disabled={currentPage === totalPages || totalPages === 0}
                             className="p-2 rounded-xl hover:bg-gray-100 disabled:opacity-50 transition-colors text-gray-600"
                         >
                             <ChevronRight size={18} />
@@ -254,10 +280,6 @@ export default function EventList() {
                 </div>
             </div>
 
-            {/* Modals & Panels */}
-            {isDetailOpen && selectedEvent && (
-                <EventDetailPanel event={selectedEvent} onClose={() => setIsDetailOpen(false)} />
-            )}
 
             {/* Lock Event Modal */}
             {isLockModalOpen && (

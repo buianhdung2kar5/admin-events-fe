@@ -1,18 +1,22 @@
 import { useState } from "react";
 import { X, Tag } from "lucide-react";
 
-import { CategoryItem } from "../data/CategoryMockData";
+import { CategoryInterface } from "../data/CategoryMockData";
 
 interface Props {
-    category: CategoryItem | null;
+    category: CategoryInterface | null;
     mode: "create" | "edit";
     onClose: () => void;
+    onConfirm: (data: Pick<CategoryInterface, "name" | "type">) => void;
 }
 
-export default function CategoryFormModal({ category, mode, onClose }: Props) {
+export default function CategoryFormModal({ category, mode, onClose, onConfirm }: Props) {
     const [name, setName] = useState(category?.name || "");
     const [type, setType] = useState(category?.type || "");
-
+    const handleConfirm = () => {
+        onConfirm({ name, type });
+        onClose();
+    }
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
@@ -78,7 +82,7 @@ export default function CategoryFormModal({ category, mode, onClose }: Props) {
                         Hủy
                     </button>
                     <button
-                        onClick={onClose}
+                        onClick={handleConfirm}
                         disabled={!name.trim() || !type.trim()}
                         className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#0092B8] hover:bg-[#007a99] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     >

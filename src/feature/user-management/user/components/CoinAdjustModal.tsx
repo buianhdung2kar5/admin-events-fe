@@ -3,7 +3,7 @@ import { X, Coins, Plus, Minus } from "lucide-react";
 import { UserItem } from "../data/UserMockData";
 
 interface Props {
-    user: UserItem;
+    user: any;
     onClose: () => void;
     onConfirm: (userId: string, amount: number, reason: string) => void;
 }
@@ -17,14 +17,15 @@ export default function CoinAdjustModal({ user, onClose, onConfirm }: Props) {
         const parsed = parseInt(amount, 10);
         if (!parsed || parsed <= 0) return;
         const finalAmount = type === "subtract" ? -parsed : parsed;
-        onConfirm(user.id, finalAmount, reason);
+        onConfirm(user.userId || user.id, finalAmount, reason);
         onClose();
     };
 
     const preview = parseInt(amount || "0", 10);
+    const currentBalance = user.coinBalance || 0;
     const newBalance = type === "add"
-        ? user.coinBalance + preview
-        : Math.max(0, user.coinBalance - preview);
+        ? currentBalance + preview
+        : Math.max(0, currentBalance - preview);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -41,7 +42,7 @@ export default function CoinAdjustModal({ user, onClose, onConfirm }: Props) {
                         </div>
                         <div>
                             <h2 className="text-base font-bold text-gray-800">Điều chỉnh Coin</h2>
-                            <p className="text-xs text-gray-400">{user.name}</p>
+                            <p className="text-xs text-gray-400">{user.fullName || user.name}</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
@@ -52,7 +53,7 @@ export default function CoinAdjustModal({ user, onClose, onConfirm }: Props) {
                 {/* Current balance */}
                 <div className="bg-amber-50 rounded-xl px-4 py-3 flex items-center justify-between">
                     <span className="text-sm text-amber-700 font-medium">Số dư hiện tại</span>
-                    <span className="text-lg font-bold text-amber-600">{user.coinBalance.toLocaleString()} 🪙</span>
+                    <span className="text-lg font-bold text-amber-600">{currentBalance.toLocaleString()} 🪙</span>
                 </div>
 
                 {/* Type toggle */}
@@ -108,7 +109,7 @@ export default function CoinAdjustModal({ user, onClose, onConfirm }: Props) {
                 {amount && (
                     <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between border border-gray-100">
                         <span className="text-sm text-gray-500">Số dư sau điều chỉnh</span>
-                        <span className={`text-lg font-bold ${newBalance < user.coinBalance ? "text-red-500" : "text-green-600"}`}>
+                        <span className={`text-lg font-bold ${newBalance < currentBalance ? "text-red-500" : "text-green-600"}`}>
                             {newBalance.toLocaleString()} 🪙
                         </span>
                     </div>

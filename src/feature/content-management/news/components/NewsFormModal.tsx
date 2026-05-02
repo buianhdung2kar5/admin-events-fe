@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, X, ChevronRight, Search, UploadCloud } from 'lucide-react';
 import { NewsItem } from '../data/NewsMockData';
-import { MockEvents } from '../../event/data/EventMockData';
+
 
 interface NewsFormModalProps {
     news?: NewsItem | null;
@@ -129,7 +129,7 @@ export default function NewsFormModal({ news, onClose, onSave }: NewsFormModalPr
                                 >
                                     <span className="truncate">
                                         {targetId 
-                                            ? (MockEvents.find(e => e.id === String(targetId))?.title || `ID: ${targetId}`)
+                                            ? (((([] as any[]).find((e: any) => e.id === String(targetId))) as any)?.title || `ID: ${targetId}`)
                                             : "Chọn sự kiện..."}
                                     </span>
                                     <ChevronRight size={16} className="flex-shrink-0" />
@@ -185,7 +185,7 @@ export default function NewsFormModal({ news, onClose, onSave }: NewsFormModalPr
                             </div>
                         </div>
                         <div className="overflow-y-auto p-2 flex-1">
-                            {MockEvents.filter(e => e.title.toLowerCase().includes(eventSearch.toLowerCase())).map(event => (
+                            {([] as any[]).filter((e: any) => e.title.toLowerCase().includes(eventSearch.toLowerCase())).map((event: any) => (
                                 <button
                                     key={event.id}
                                     onClick={() => {
@@ -203,7 +203,7 @@ export default function NewsFormModal({ news, onClose, onSave }: NewsFormModalPr
                                     </div>
                                 </button>
                             ))}
-                            {MockEvents.filter(e => e.title.toLowerCase().includes(eventSearch.toLowerCase())).length === 0 && (
+                            {([] as any[]).filter((e: any) => e.title.toLowerCase().includes(eventSearch.toLowerCase())).length === 0 && (
                                 <div className="p-4 text-center text-sm text-gray-400">Không tìm thấy sự kiện nào</div>
                             )}
                         </div>

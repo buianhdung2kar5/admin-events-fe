@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { ArrowLeft, QrCode, ClipboardList, Users, BarChart2, LogIn, LogOut, Clock, Smartphone, Pen } from "lucide-react";
-import { EventItem } from "../../event/data/EventMockData";
+
 import { MockAttendanceLogs, MockEventQRs, getAttendanceStats, AttendanceLog, AttendanceMethod } from "../data/AttendanceMockData";
 import ParticipantList from "./ParticipantList";
 
 interface Props {
-    event: EventItem;
+    event: any;
     onBack: () => void;
 }
 
@@ -118,7 +118,7 @@ export default function AttendancePanel({ event, onBack }: Props) {
                         {event.analytics.checkInTimeline.length > 0 && (
                             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
                                 <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2"><Clock size={14} /> Timeline Check-in</h3>
-                                {event.analytics.checkInTimeline.map((item, i) => (
+                                {event.analytics.checkInTimeline.map((item: any, i: number) => (
                                     <div key={i} className="flex items-center gap-4">
                                         <span className="w-10 text-xs font-bold text-gray-500 text-right">{item.time}</span>
                                         <div className="flex-1 flex items-center gap-3">

@@ -25,10 +25,6 @@ const navItems = [
             path: "/user-management/user"
           },
           {
-            name: "Tổ chức",
-            path: "/user-management/organization"
-          },
-          {
             name: "Xác thực tài liệu",
             path: "/user-management/verify-document"
           },

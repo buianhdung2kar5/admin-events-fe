@@ -1,21 +1,16 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-    Users, Trash2, Eye, Coins,
-    ShieldOff, CheckSquare2, X, ShieldCheck, ArrowUpCircle
+    Users, Eye,
+    ShieldOff, ShieldCheck, FileWarning, Loader2, CheckSquare2, X
 } from 'lucide-react';
-import { MockUsers, UserItem, getRoleDetails, UserRole, UserStatus } from '../data/UserMockData';
-import TableData, { Column } from '../../../../components/TableData';
-import UserDetailPanel from './UserDetailPanel';
+import { ListUserInterface, getRoleDetails, UserStatus } from '../data/UserMockData';
+import { Column } from '../../../../components/TableData';
+import UserApi from '../../../../services/user-management/UserApi';
 
-// ─── API stubs (comment khi chưa có backend) ───────────────────────
-// GET    /api/users                → fetchUsers()
-// GET    /api/users/{id}           → fetchUserById(id)
-// DELETE /api/users/{id}           → deleteUser(id)
-// POST   /api/admin/bulk-suspend   → bulkSuspend(ids)
-// GET    /api/finance/coins/balance → getCoinBalance(userId)
-// GET    /api/finance/coins/history → getCoinHistory(userId)
-// ──────────────────────────────────────────────────────────────────
-
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { SystemManagementApi } from '../../../../services/system-management/SystemManagementApi';
+import Toast from '../../../../components/common/Toast';
 const PAGE_SIZE = 5;
 
 interface ListUserProps {
@@ -27,99 +22,100 @@ interface ListUserProps {
     };
 }
 
-// Chỉ lấy người dùng cá nhân — Organization/Business có module riêng
-const USER_ONLY_ROLES: string[] = ["Admin", "Member", "Student"];
-const userOnlyData = MockUsers.filter(u => USER_ONLY_ROLES.includes(u.role));
-
 export default function ListUser({ filter }: ListUserProps) {
-    // ── State ──────────────────────────────────────────────────────
-    const [data, setData] = useState<UserItem[]>(userOnlyData);
+    const queryClient = useQueryClient();
+    const navigate = useNavigate();
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const [detailUser, setDetailUser] = useState<UserItem | null>(null);
-
-    // Suspend Modal State
     const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
-    const [suspendTargetId, setSuspendTargetId] = useState<string | null>(null); // null means bulk
-    const [suspendReason, setSuspendReason] = useState("");
-    const [suspendDuration, setSuspendDuration] = useState(30);
+    const [suspendTargetId, setSuspendTargetId] = useState<string | null>(null);
+    const [suspendAction, setSuspendAction] = useState<"SUSPEND" | "UNSUSPEND">("SUSPEND");
+    const [isActioning, setIsActioning] = useState(false);
+    const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
-    // ── Filtered data ──────────────────────────────────────────────
-    const filtered = useMemo(() => {
-        return data.filter((u) => {
-            const search = filter?.search?.toLowerCase() || "";
-            const matchSearch = !search
-                || u.name.toLowerCase().includes(search)
-                || u.email.toLowerCase().includes(search)
-                || u.organization.toLowerCase().includes(search);
-            
-            const roleFilter = filter?.filter1 || "";
-            const matchRole = !roleFilter || u.role === roleFilter;
+    const notify = (msg: string, ok = true) => {
+        setToast({ msg, ok });
+        setTimeout(() => setToast(null), 3000);
+    }; 
 
-            const statusFilter = filter?.filter2 || "";
-            const matchStatus = !statusFilter || u.status === statusFilter;
-
-            const dateFilter = filter?.date || "";
-            const matchDate = !dateFilter || u.joinedDate.startsWith(dateFilter);
-
-            return matchSearch && matchRole && matchStatus && matchDate;
-        });
-    }, [data, filter]);
-
-    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-    const paginated  = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
-    // Reset to page 1 when filters change
     useEffect(() => {
         setCurrentPage(1);
     }, [filter]);
 
-    // ── Actions ────────────────────────────────────────────────────
-    const openSuspendModal = (id?: string) => {
+    const { data: queryData, isLoading } = useQuery({
+        queryKey: ['users_list', currentPage, filter],
+        queryFn: async () => {
+            const search = filter?.search || undefined;
+            const role = filter?.filter1 || undefined;
+            const status = filter?.filter2 || undefined;
+            
+            const res = await UserApi.getAllUsers(
+                currentPage - 1,
+                PAGE_SIZE,
+                search,
+                'createdTime',
+                'desc',
+                role,
+                status
+            );
+            if (res.statusCode !== 200) {
+                throw new Error(res.message || 'Failed to fetch users');    
+            } else {
+                const responseData = res.object || {};
+                const fetchedData: any[] = responseData.content || [];
+                const total = responseData.totalElements || 0;
+                const totalPagesCount = responseData.totalPages || 1;
+                const mappedData: ListUserInterface[] = fetchedData.map((item: any) => ({
+                    userId: item.userId?.toString() || item.id?.toString() || "",
+                    fullName: item.fullName || item.name || "Chưa cập nhật",
+                    role: item.role || "USER",
+                    status: item.status || "ACTIVE",
+                    avatarUrl: item.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.fullName || item.userId || 'User'}`,
+                    createdTime: item.joinedAt || item.createdTime || new Date().toISOString()
+                }));
+                return { data: mappedData, totalRecords: total, totalPages: totalPagesCount };
+            }
+    }
+    });
+
+    const paginated = queryData?.data || [];
+    const totalRecords = queryData?.totalRecords || 0;
+    const totalPages = queryData?.totalPages || 1;
+    const selectedUsers = paginated.filter(u => selectedIds.includes(u.userId));
+    const allActive   = selectedUsers.length > 0 && selectedUsers.every(u => u.status === "ACTIVE");
+    const allDisabled = selectedUsers.length > 0 && selectedUsers.every(u => u.status === "DISABLED");
+    const bulkAction  = allActive ? "SUSPEND" : allDisabled ? "UNSUSPEND" : null;
+
+    const openSuspendModal = (action: "SUSPEND" | "UNSUSPEND", id?: string) => {
         setSuspendTargetId(id || null);
-        setSuspendReason("");
-        setSuspendDuration(30);
+        setSuspendAction(action);
         setIsSuspendModalOpen(true);
     };
 
-    const confirmSuspend = () => {
+    const confirmSuspend = async () => {
         const targets = suspendTargetId ? [suspendTargetId] : selectedIds;
-        
-        // TODO: call POST /api/admin/bulk-suspend { entityType: "USER", entityIds: targets, reason: suspendReason, durationDays: suspendDuration }
-        
-        setData((prev) =>
-            prev.map((u) =>
-                targets.includes(u.id) ? { ...u, status: "Blocked" as UserStatus } : u
-            )
-        );
-        if (suspendTargetId && detailUser?.id === suspendTargetId) {
-            setDetailUser({ ...detailUser, status: "Blocked" });
-        }
-        
-        if (!suspendTargetId) {
-            setSelectedIds([]);
-        }
-        
-        setIsSuspendModalOpen(false);
-    };
-
-    const handleUnlock = (id: string) => {
-        // TODO: call POST /api/admin/unlock { entityType: "USER", entityId: id }
-        setData((prev) => prev.map((u) => u.id === id ? { ...u, status: "Active" as UserStatus } : u));
-        if (detailUser?.id === id) {
-            setDetailUser({ ...detailUser, status: "Active" as UserStatus });
+        setIsActioning(true);
+        try {
+            const res = await SystemManagementApi.buldSuspend({
+                entityType: "USER",
+                action: suspendAction,
+                entityIds: targets
+            });
+            if (res.statusCode !== 200) throw new Error(res.message);
+            queryClient.invalidateQueries({ queryKey: ['users_list'] });
+            if (!suspendTargetId) setSelectedIds([]);
+            setIsSuspendModalOpen(false);
+            notify(suspendAction === "SUSPEND" ? "Khóa tài khoản thành công!" : "Mở khóa tài khoản thành công!");
+        } catch {
+            notify(suspendAction === "SUSPEND" ? "Khóa thất bại. Vui lòng thử lại." : "Mở khóa thất bại. Vui lòng thử lại.", false);
+        } finally {
+            setIsActioning(false);
         }
     };
 
-    const handleUpgrade = (id: string) => {
-        // TODO: PUT /verification-documents/{id}/approve
-        // Body: { "status": "APPROVED" }
-        // Auto: user.role = ORGANIZATION, verificationStatus = APPROVED
-        // Vì userOnlyData không hiển thị Organization nên ta sẽ lọc bỏ user này khỏi danh sách
-        setData((prev) => prev.filter((u) => u.id !== id));
-        if (detailUser?.id === id) {
-            setDetailUser(null);
-        }
+    const handleViewReport = (id: string) => {
+        // TODO: Implement view report logic or navigate to report page
+        alert(`Xem báo cáo cho người dùng: ${id}`);
     };
 
     const toggleSelect = (id: string) =>
@@ -129,19 +125,18 @@ export default function ListUser({ filter }: ListUserProps) {
 
     const toggleSelectAll = () =>
         setSelectedIds(
-            selectedIds.length === paginated.length ? [] : paginated.map((u) => u.id)
+            selectedIds.length === paginated.length ? [] : paginated.map((u) => u.userId)
         );
 
-    // ── Table columns ──────────────────────────────────────────────
-    const columns: Column<UserItem>[] = [
+    const columns: Column<ListUserInterface>[] = [
         {
             header: "",
             align: "center",
             render: (user) => (
                 <input
                     type="checkbox"
-                    checked={selectedIds.includes(user.id)}
-                    onChange={() => toggleSelect(user.id)}
+                    checked={selectedIds.includes(user.userId)}
+                    onChange={() => toggleSelect(user.userId)}
                     className="w-4 h-4 accent-[#0092B8] cursor-pointer"
                 />
             ),
@@ -150,11 +145,11 @@ export default function ListUser({ filter }: ListUserProps) {
             header: "Người dùng",
             render: (user) => (
                 <div className="flex items-center gap-3">
-                    <img src={user.avatarUrl} alt={user.name}
+                    <img src={user.avatarUrl} alt={user.fullName}
                         className="w-10 h-10 rounded-full object-cover border border-gray-100 flex-shrink-0" />
                     <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-bold text-gray-800 truncate leading-tight">{user.name}</span>
-                        <span className="text-xs text-gray-400 truncate">{user.email}</span>
+                        <span className="text-sm font-bold text-gray-800 truncate leading-tight">{user.fullName}</span>
+                        <span className="text-xs text-gray-400 truncate">ID: {user.userId}</span>
                     </div>
                 </div>
             ),
@@ -170,46 +165,25 @@ export default function ListUser({ filter }: ListUserProps) {
                 );
             },
         },
-        {
-            header: "Tổ chức",
-            render: (user) => (
-                <span className="text-sm text-gray-600 font-medium max-w-[200px] truncate block">
-                    {user.organization || "—"}
-                </span>
-            ),
-        },
-        {
+        {   
             header: "Trạng thái",
             align: "center",
             render: (user) => {
                 const cfg = {
-                    Active:  "bg-[#4BBDD3] text-white",
-                    Pending: "bg-amber-400 text-white",
-                    Blocked: "bg-red-500 text-white",
+                    ACTIVE:  "bg-[#4BBDD3] text-white",
+                    PENDING: "bg-amber-400 text-white",
+                    DISABLED: "bg-red-500 text-white",
                 }[user.status] || "";
-                const lbl = { Active: "Hoạt động", Pending: "Chờ duyệt", Blocked: "Bị khóa" }[user.status];
+                const lbl = { ACTIVE: "Hoạt động", PENDING: "Chờ duyệt", DISABLED: "Bị khóa" }[user.status];
                 return <span className={`inline-block px-4 py-1.5 text-[10px] font-bold rounded-xl whitespace-nowrap ${cfg}`}>{lbl}</span>;
             },
         },
-        {
-            header: "Coin",
-            align: "center",
-            render: (user) => (
-                <span className="text-sm font-bold text-amber-500">{user.coinBalance.toLocaleString()}</span>
-            ),
-        },
-        {
-            header: "Sự kiện",
-            align: "center",
-            render: (user) => (
-                <span className="text-sm font-bold text-gray-600 ">{user.eventCount}</span>
-            ),
-        },
+
         {
             header: "Ngày tham gia",
             render: (user) => (
                 <span className="text-sm text-gray-400 font-medium">
-                    {new Date(user.joinedDate).toLocaleDateString("vi-VN")}
+                    {new Date(user.createdTime || new Date()).toLocaleDateString("vi-VN")}
                 </span>
             ),
         },
@@ -220,15 +194,21 @@ export default function ListUser({ filter }: ListUserProps) {
                 <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                     <button
                         title="Xem chi tiết"
-                        onClick={() => setDetailUser(user)}
+                        onClick={() => {
+                            if (user.role === "ORGANIZATION") {
+                                navigate(`/user-management/organization/${user.userId}`);
+                            } else {
+                                navigate(`/user-management/users/${user.userId}`);
+                            }
+                        }}
                         className="p-2 text-gray-400 hover:text-[#0092B8] hover:bg-blue-50 rounded-lg transition-all"
                     >
                         <Eye size={17} />
                     </button>
-                    {user.status !== "Blocked" ? (
+                    {user.status !== "DISABLED" ? (
                         <button
                             title="Khóa tài khoản"
-                            onClick={() => openSuspendModal(user.id)}
+                            onClick={() => openSuspendModal("SUSPEND", user.userId)}
                             className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                         >
                             <ShieldOff size={17} />
@@ -236,18 +216,18 @@ export default function ListUser({ filter }: ListUserProps) {
                     ) : (
                         <button
                             title="Mở khóa tài khoản"
-                            onClick={() => handleUnlock(user.id)}
+                            onClick={() => openSuspendModal("UNSUSPEND", user.userId)}
                             className="p-2 text-gray-400 hover:text-green-500 hover:bg-green-50 rounded-lg transition-all"
                         >
                             <ShieldCheck size={17} />
                         </button>
                     )}
                     <button
-                        title="Nâng cấp lên Organization"
-                        onClick={() => handleUpgrade(user.id)}
-                        className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all"
+                        title="Xem báo cáo"
+                        onClick={() => handleViewReport(user.userId)}
+                        className="p-2 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-all"
                     >
-                        <ArrowUpCircle size={17} />
+                        <FileWarning size={17} />
                     </button>
                 </div>
             ),
@@ -256,9 +236,7 @@ export default function ListUser({ filter }: ListUserProps) {
 
     return (
         <div className="flex flex-col gap-4">
-
-
-            {/* ── Bulk Action Bar ── */}
+            <Toast toast={toast} onClose={() => setToast(null)} />
             {selectedIds.length > 0 && (
                 <div className="bg-[#0092B8] text-white rounded-2xl px-5 py-3 flex items-center justify-between shadow-md animate-[fadeSlideUp_0.2s_ease]">
                     <div className="flex items-center gap-2 text-sm font-semibold">
@@ -266,10 +244,23 @@ export default function ListUser({ filter }: ListUserProps) {
                         Đã chọn <span className="font-black text-base">{selectedIds.length}</span> người dùng
                     </div>
                     <div className="flex gap-2">
-                        <button onClick={() => openSuspendModal()}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-red-500/80 hover:bg-red-500 rounded-xl text-sm font-semibold transition-colors">
-                            <ShieldOff size={15} /> Khóa tài khoản
-                        </button>
+                        {bulkAction === "SUSPEND" && (
+                            <button onClick={() => openSuspendModal("SUSPEND")}
+                                className="flex items-center gap-1.5 px-4 py-2 bg-red-500/80 hover:bg-red-500 rounded-xl text-sm font-semibold transition-colors">
+                                <ShieldOff size={15} /> Khóa tài khoản
+                            </button>
+                        )}
+                        {bulkAction === "UNSUSPEND" && (
+                            <button onClick={() => openSuspendModal("UNSUSPEND")}
+                                className="flex items-center gap-1.5 px-4 py-2 bg-green-500/80 hover:bg-green-500 rounded-xl text-sm font-semibold transition-colors">
+                                <ShieldCheck size={15} /> Mở khóa
+                            </button>
+                        )}
+                        {bulkAction === null && selectedIds.length > 0 && (
+                            <span className="flex items-center gap-1.5 px-4 py-2 bg-white/20 rounded-xl text-sm font-medium italic">
+                                Vui lòng chọn cùng loại trạng thái
+                            </span>
+                        )}
                         <button onClick={() => setSelectedIds([])}
                             className="p-2 hover:bg-white/15 rounded-xl transition-colors">
                             <X size={16} />
@@ -278,9 +269,7 @@ export default function ListUser({ filter }: ListUserProps) {
                 </div>
             )}
 
-            {/* ── Table ── */}
             <div className="w-full bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                {/* Table header */}
                 <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
                     <div className="flex items-center gap-3">
                         <div className="p-2.5 bg-blue-50/50 rounded-xl">
@@ -288,7 +277,7 @@ export default function ListUser({ filter }: ListUserProps) {
                         </div>
                         <div>
                             <h3 className="text-xl font-bold text-gray-800">
-                                Danh sách người dùng ({filtered.length})
+                                Danh sách người dùng ({totalRecords})
                             </h3>
                             <p className="text-sm text-gray-400 font-medium">Quản lý tất cả người dùng trong hệ thống</p>
                         </div>
@@ -315,9 +304,18 @@ export default function ListUser({ filter }: ListUserProps) {
                             </tr>
                         </thead>
                         <tbody>
-                            {paginated.length > 0 ? paginated.map((user, idx) => (
-                                <tr key={user.id}
-                                    className={`group border-b border-gray-50 last:border-0 transition-colors ${selectedIds.includes(user.id) ? "bg-blue-50/40" : "hover:bg-gray-50/50"}`}>
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={columns.length} className="px-6 py-16 text-center">
+                                        <div className="flex flex-col items-center justify-center gap-3">
+                                            <Loader2 className="w-8 h-8 text-[#0092B8] animate-spin" />
+                                            <span className="text-sm font-medium text-gray-400">Đang tải dữ liệu...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : paginated.length > 0 ? paginated.map((user, idx) => (
+                                <tr key={user.userId}
+                                    className={`group border-b border-gray-50 last:border-0 transition-colors ${selectedIds.includes(user.userId) ? "bg-blue-50/40" : "hover:bg-gray-50/50"}`}>
                                     {columns.map((col, cIdx) => (
                                         <td key={cIdx}
                                             className={`px-6 py-4 ${col.align === "center" ? "text-center" : "text-left"}`}>
@@ -339,7 +337,7 @@ export default function ListUser({ filter }: ListUserProps) {
                 {/* Pagination */}
                 <div className="px-6 py-4 border-t border-gray-50 flex items-center justify-between text-xs text-gray-400 font-medium">
                     <span>
-                        Hiển thị <span className="text-gray-700 font-bold">{paginated.length}</span> / <span className="text-gray-700 font-bold">{filtered.length}</span> bản ghi
+                        Hiển thị <span className="text-gray-700 font-bold">{paginated.length}</span> / <span className="text-gray-700 font-bold">{totalRecords}</span> bản ghi
                     </span>
                     <div className="flex items-center gap-1.5">
                         <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -361,37 +359,40 @@ export default function ListUser({ filter }: ListUserProps) {
                     </div>
                 </div>
             </div>
-
-            {/* ── Detail Panel ── */}
-            {detailUser && (
-                <UserDetailPanel
-                    user={detailUser}
-                    onClose={() => setDetailUser(null)}
-                    onSuspend={() => openSuspendModal(detailUser.id)}
-                    onUnlock={() => handleUnlock(detailUser.id)}
-                />
-            )}
-
-            {/* ── Suspend Modal ── */}
             {isSuspendModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsSuspendModalOpen(false)} />
                     <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden animate-[zoomIn_0.2s_ease]">
-                        <div className="flex flex-col gap-4 bg-red-50 p-6">
-                            <h4 className="font-bold text-red-600 text-lg flex items-center gap-2">
-                                <ShieldOff size={20} /> Xác nhận khóa tài khoản
+                        <div className={`flex flex-col gap-4 p-6 ${suspendAction === "SUSPEND" ? "bg-red-50" : "bg-green-50"}`}>
+                            <h4 className={`font-bold text-lg flex items-center gap-2 ${suspendAction === "SUSPEND" ? "text-red-600" : "text-green-600"}`}>
+                                {suspendAction === "SUSPEND"
+                                    ? <><ShieldOff size={20} /> Xác nhận khóa tài khoản</>
+                                    : <><ShieldCheck size={20} /> Xác nhận mở khóa tài khoản</>
+                                }
                             </h4>
-                            <p className="text-sm text-red-500/80">Bạn đang chuẩn bị khóa tài khoản người dùng. Người dùng sẽ không thể đăng nhập hoặc tham gia sự kiện trong thời gian bị khóa.</p>
+                            <p className={`text-sm ${suspendAction === "SUSPEND" ? "text-red-500/80" : "text-green-600/80"}`}>
+                                {suspendAction === "SUSPEND"
+                                    ? "Xác nhận khóa tài khoản"
+                                    : "Xác nhận mở khóa tài khoản"
+                                }
+                            </p>
                         </div>
                         <div className="p-6 flex flex-col gap-5">
                             <div className="flex items-center gap-3">
-                                <button onClick={() => setIsSuspendModalOpen(false)} className="flex-1 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+                                <button
+                                    onClick={() => setIsSuspendModalOpen(false)}
+                                    disabled={isActioning}
+                                    className="flex-1 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors disabled:opacity-40">
                                     Hủy
                                 </button>
-                                <button 
-                                    onClick={confirmSuspend} 
-                                    className="flex-1 py-3 text-sm font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors flex items-center justify-center gap-2">
-                                    Xác nhận Khóa
+                                <button
+                                    onClick={confirmSuspend}
+                                    disabled={isActioning}
+                                    className={`flex-1 py-3 text-sm font-bold text-white rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-70 ${suspendAction === "SUSPEND" ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"}`}>
+                                    {isActioning
+                                        ? <><Loader2 size={15} className="animate-spin" /> Đang xử lý...</>
+                                        : suspendAction === "SUSPEND" ? "Xác nhận Khóa" : "Xác nhận Mở khóa"
+                                    }
                                 </button>
                             </div>
                         </div>

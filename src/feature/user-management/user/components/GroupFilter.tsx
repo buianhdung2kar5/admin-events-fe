@@ -84,10 +84,9 @@ const FILTER_CONFIG: any = {
             label: "Vai trò", 
             options: [
                 { label: "Tất cả vai trò", value: "" },
-                { label: "Sinh viên", value: "Student" },
-                { label: "Doanh nghiệp", value: "Business" },
-                { label: "Tổ chức", value: "Organization" },
-                { label: "Quản trị viên", value: "Admin" }
+                { label: "Người dùng", value: "USER" },
+                { label: "Tổ chức", value: "ORGANIZATION" },
+                { label: "Quản trị viên", value: "ADMIN" }
             ] 
         },
         filter2: { 
@@ -97,25 +96,6 @@ const FILTER_CONFIG: any = {
                 { label: "Hoạt động", value: "Active" },
                 { label: "Chờ duyệt", value: "Pending" },
                 { label: "Bị khóa", value: "Blocked" }
-            ] 
-        }
-    },
-    "organization": {
-        filter1: { 
-            label: "Loại tổ chức", 
-            options: [
-                { label: "Tất cả loại", value: "" },
-                { label: "Trường ĐH", value: "University" },
-                { label: "CLB / Hội SV", value: "Club" },
-                { label: "Doanh nghiệp", value: "Business" }
-            ] 
-        },
-        filter2: { 
-            label: "Trạng thái", 
-            options: [
-                { label: "Tất cả", value: "" },
-                { label: "Hoạt động", value: "Active" },
-                { label: "Đã khóa", value: "Blocked" }
             ] 
         }
     },

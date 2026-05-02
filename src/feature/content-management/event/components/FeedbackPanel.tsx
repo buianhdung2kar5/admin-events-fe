@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, MessageSquare, BarChart2, List, Plus, Trash2, Star, X } from "lucide-react";
-import { EventItem } from "../data/EventMockData";
+
 import {
     FeedbackQuestion, Feedback, QuestionType,
     MockFeedbackQuestions, MockFeedbacks, getFeedbackStats
@@ -8,7 +8,7 @@ import {
 import FeedbackQuestionForm from "./FeedbackQuestionForm";
 
 interface Props {
-    event: EventItem;
+    event: any;
     onBack: () => void;
 }
 

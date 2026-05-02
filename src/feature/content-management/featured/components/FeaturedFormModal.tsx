@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, Calendar, Hash, Image as ImageIcon } from "lucide-react";
 import { FeaturedItem, MockFeatured } from "../data/FeaturedMockData";
-import { MockEvents, EventItem } from "../../event/data/EventMockData";
+
 
 interface Props {
     featuredEvent: FeaturedItem | null;
@@ -15,7 +15,7 @@ export default function FeaturedFormModal({ featuredEvent, mode, onClose }: Prop
     const [startDate, setStartDate] = useState(featuredEvent?.startDate ? new Date(featuredEvent.startDate).toISOString().slice(0, 16) : "");
     const [endDate, setEndDate] = useState(featuredEvent?.endDate ? new Date(featuredEvent.endDate).toISOString().slice(0, 16) : "");
 
-    const selectedEventObj = MockEvents.find(e => e.id === selectedEventId);
+    const selectedEventObj: any = ([] as any[]).find((e: any) => e.id === selectedEventId);
 
     const handleSave = () => {
         // In a real app, we'd validate and save via API
@@ -56,7 +56,7 @@ export default function FeaturedFormModal({ featuredEvent, mode, onClose }: Prop
                             className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#0092B8] focus:ring-2 focus:ring-[#0092B8]/20 transition-all bg-white font-medium disabled:bg-gray-50 disabled:text-gray-500"
                         >
                             <option value="" disabled>-- Chọn một sự kiện --</option>
-                            {MockEvents.filter(e => e.status === "PUBLISHED" && (e.id === featuredEvent?.eventId || !MockFeatured.some(f => f.eventId === e.id))).map(event => (
+                            {([] as any[]).filter((e: any) => e.status === "PUBLISHED" && (e.id === featuredEvent?.eventId || !MockFeatured.some(f => f.eventId === e.id))).map((event: any) => (
                                 <option key={event.id} value={event.id}>{event.title}</option>
                             ))}
                         </select>

@@ -1,71 +1,109 @@
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { auth } from "../firebase";
 import { AdminUser } from "../auth/AuthContext";
 
 const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
-const TOKEN_KEY = "admin_token";
-const USER_KEY = "admin_user";
-
+const TOKEN_KEY = "id_token";   
+const USER_KEY  = "admin_user"; 
 export interface LoginResponse {
   token: string;
   user: AdminUser;
 }
 
-// ─────────────────────────────────────────────
-// 🧪 MOCK DATA — Xóa block này khi có API thật
-// ─────────────────────────────────────────────
-const MOCK_ACCOUNTS: Record<string, { password: string; user: AdminUser }> = {
-  admin: {
-    password: "admin",
-    user: {
-      id: "mock-admin-001",
-      email: "admin@sevents.vn",
-      name: "Super Admin",
-      role: "admin",
-      avatar: undefined,
-    },
-  },
-};
-
-function mockLogin(email: string, password: string): LoginResponse | null {
-  const account = MOCK_ACCOUNTS[email];
-  if (!account || account.password !== password) return null;
-  return {
-    token: "mock-token-" + btoa(email + ":" + Date.now()),
-    user: account.user,
-  };
-}
-// ─────────────────────────────────────────────
-
-/**
- * Gọi API đăng nhập.
- * Nếu trùng mock account thì trả về luôn mà không gọi API.
- * TODO: Xóa phần mock khi backend đã sẵn sàng.
- */
-export async function loginApi(email: string, password: string): Promise<LoginResponse> {
-  // --- MOCK: thử đăng nhập bằng tài khoản mock trước ---
-  const mockResult = mockLogin(email, password);
-  if (mockResult) {
-    // Giả lập độ trễ network nhỏ cho chân thực hơn
-    await new Promise((r) => setTimeout(r, 600));
-    return mockResult;
-  }
-  // --- END MOCK ---
-
-  const res = await fetch(`${BASE_URL}/api/admin/auth/login`, {
+export async function loginApi(email: string, password: string): Promise<AdminUser> {
+  const credential = await signInWithEmailAndPassword(auth, email, password);
+  const idToken = await credential.user.getIdToken();
+  const res = await fetch(`${BASE_URL}/auth/verify`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    headers: { Authorization: `Bearer ${idToken}` },
   });
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error?.message || "Email hoặc mật khẩu không đúng");
+    throw new Error(error?.message || "Xác thực thất bại");
   }
 
-  return res.json();
+  const data = await res.json();
+  const user = data.object;
+  if (user?.role !== "ADMIN") {
+    await signOut(auth);
+    throw new Error("Tài khoản không có quyền truy cập trang quản trị");
+  }
+
+  if (user?.status === "DISABLED") {
+    await signOut(auth);
+    throw new Error("Tài khoản đã bị vô hiệu hoá");
+  }
+  saveSession(idToken, user);
+
+  return user;
+}
+export async function logout(): Promise<void> {
+  try {
+    // Thông báo cho Backend invalidate session phía server
+    const token = getStoredToken();
+    if (token) {
+      await fetch(`${BASE_URL}/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    }
+  } catch {
+  } finally {
+    await signOut(auth); 
+    clearSession();      
+  }
 }
 
+// ─── Lắng nghe trạng thái đăng nhập (dùng trong AuthProvider) ──────────────
+/**
+ * Lắng nghe Firebase Auth State.
+ * Khi F5 hoặc mở tab mới, Firebase tự động kiểm tra và phục hồi session.
+ * Trả về hàm unsubscribe để cleanup trong useEffect.
+ */
+export function onAuthChange(callback: (user: AdminUser | null) => void): () => void {
+  return onAuthStateChanged(auth, async (firebaseUser) => {
+    if (!firebaseUser) {
+      callback(null);
+      return;
+    }
+
+    try {
+      // Lấy token mới nhất (Firebase tự gia hạn mỗi giờ)
+      const idToken = await firebaseUser.getIdToken();
+
+      // Gọi Backend để lấy thông tin user mới nhất
+      const res = await fetch(`${BASE_URL}/auth/verify`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+
+      if (!res.ok) {
+        callback(null);
+        return;
+      }
+
+      const data = await res.json();
+      const user = data.object;
+
+      if (user?.role !== "ADMIN") {
+        callback(null);
+        return;
+      }
+
+      // Cập nhật token mới nhất vào localStorage
+      saveSession(idToken, user);
+      callback(user);
+    } catch {
+      callback(null);
+    }
+  });
+}
+
+// ─── Quản lý LocalStorage ───────────────────────────────────────────────────
+
 /** Lưu token + user vào localStorage */
-export function saveSession(token: string, user: AdminUser) {
+export function saveSession(token: string, user: AdminUser): void {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
@@ -86,8 +124,8 @@ export function getStoredUser(): AdminUser | null {
   }
 }
 
-/** Xóa session */
-export function clearSession() {
+/** Xóa toàn bộ session */
+export function clearSession(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
 }

@@ -1,96 +1,159 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Edit3, Trash2, Settings2, Plus, X, AlertTriangle } from "lucide-react";
-import { MockCategories, CategoryItem } from "../data/CategoryMockData";
+import { ChevronLeft, ChevronRight, Edit3, Trash2, Settings2, Plus, X, AlertTriangle, Loader2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { CategoryApi } from "../../../../services/events-management/CategoryApi";
+import { CategoryInterface } from "../data/CategoryMockData";
 import CategoryFormModal from "./CategoryFormModal";
 import CategoryOptionsPanel from "./CategoryOptionsPanel";
+import Toast from "../../../../components/common/Toast";
 
 export default function CategoryList() {
-    const [categories, setCategories] = useState<CategoryItem[]>(MockCategories);
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const queryClient = useQueryClient();
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
-    // UI State
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 20;
+
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isOptionsOpen, setIsOptionsOpen] = useState(false);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState<CategoryItem | null>(null);
+    const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
     const [formMode, setFormMode] = useState<"create" | "edit">("create");
     const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [toastState, setToastState] = useState<{ msg: string; ok: boolean } | null>(null);
 
-    // Pagination
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 6;
-    const totalPages = Math.ceil(categories.length / itemsPerPage);
-    const paginatedItems = categories.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const showToast = (msg: string, ok = true) => {
+        setToastState({ msg, ok });
+        setTimeout(() => setToastState(null), 3000);
+    };
+
+    const { data: queryData, isLoading, isError } = useQuery({
+        queryKey: ['categories', currentPage, itemsPerPage],
+        queryFn: async () => {
+            const res = await CategoryApi.getAllCategory(currentPage - 1, itemsPerPage);
+            return res;
+        }
+    });
+    const paginatedItems = queryData?.object?.content || [];
+    const totalPages = queryData?.object?.totalPages || 1;
+    const totalRecords = queryData?.object?.totalElements || 0;
+    
+    const selectedCategory = paginatedItems.find((c: CategoryInterface) => c.categoryId === selectedCategoryId) || null;
+
+    const deleteMutation = useMutation({
+        mutationFn: async (ids: number[]) => {
+            await CategoryApi.deleteCategory(ids);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['categories'] });
+            setSelectedIds([]);
+            setIsDeleteConfirmOpen(false);
+            setSelectedCategoryId(null);
+            showToast("Xóa thành công", true);
+        },
+        onError: (err: any) => {
+            setDeleteError(err.response?.data?.message || "Đã xảy ra lỗi khi xóa");
+            showToast("Lỗi khi xóa", false);
+        }
+    });
+
+    const saveCategoryMutation = useMutation({
+        mutationFn: async (data: Pick<CategoryInterface, "name" | "type">) => {
+            if (formMode === "edit" && selectedCategoryId) {
+                return await CategoryApi.updateCategory(selectedCategoryId, data as any);
+            }
+            return await CategoryApi.createCategory(data as any);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['categories'] });
+            setIsFormOpen(false);
+            setSelectedCategoryId(null);
+            showToast(formMode === "create" ? "Tạo danh mục thành công" : "Cập nhật danh mục thành công", true);
+        },
+        onError: () => {
+            showToast("Có lỗi xảy ra khi lưu danh mục", false);
+        }
+    });
+
+    if (queryData && queryData?.statusCode != 200) {
+        console.error(queryData?.message);
+        return null;
+    }
 
     const toggleSelectAll = () => {
         if (selectedIds.length === paginatedItems.length && paginatedItems.length > 0) {
             setSelectedIds([]);
         } else {
-            setSelectedIds(paginatedItems.map(c => c.category_id));
+            setSelectedIds(paginatedItems.map((c: CategoryInterface) => c.categoryId));
         }
     };
 
-    const toggleSelect = (id: string) => {
+    const toggleSelect = (id: number) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
 
-    const handleCreate = () => {
-        setSelectedCategory(null);
-        setFormMode("create");
+    const handleFormModal = (mode: "create" | "edit", cat: CategoryInterface | null = null) => {
+        setSelectedCategoryId(cat ? cat.categoryId : null);
+        setFormMode(mode);
         setIsFormOpen(true);
     };
 
-    const handleEdit = (cat: CategoryItem) => {
-        setSelectedCategory(cat);
-        setFormMode("edit");
-        setIsFormOpen(true);
-    };
-
-    const handleOpenOptions = (cat: CategoryItem) => {
-        setSelectedCategory(cat);
+    const handleOpenOptions = (cat: CategoryInterface) => {
+        setSelectedCategoryId(cat.categoryId);
         setIsOptionsOpen(true);
     };
 
-    const handleUpdateCategory = (updated: CategoryItem) => {
-        setCategories(prev => prev.map(c => c.category_id === updated.category_id ? updated : c));
-        if (selectedCategory?.category_id === updated.category_id) setSelectedCategory(updated);
+
+
+    const handleSaveCategory = (data: Pick<CategoryInterface, "name" | "type">) => {
+        saveCategoryMutation.mutate(data);
     };
 
-    const handleDeleteClick = (cat: CategoryItem) => {
-        if (cat.options.length > 0) {
+    const handleDeleteClick = (cat: CategoryInterface) => {
+        if (cat.options && cat.options.length > 0) {
             setDeleteError(`Không thể xóa danh mục "${cat.name}" vì còn ${cat.options.length} options liên kết. Hãy xóa hết options trước.`);
             setIsDeleteConfirmOpen(true);
-            setSelectedCategory(null);
+            setSelectedCategoryId(null);
         } else {
-            setSelectedCategory(cat);
+            setSelectedCategoryId(cat.categoryId);
             setDeleteError(null);
             setIsDeleteConfirmOpen(true);
         }
     };
 
     const handleConfirmDelete = () => {
-        if (!selectedCategory) return;
-        setCategories(prev => prev.filter(c => c.category_id !== selectedCategory.category_id));
-        setSelectedIds(prev => prev.filter(i => i !== selectedCategory.category_id));
-        setIsDeleteConfirmOpen(false);
-        setSelectedCategory(null);
+        if (!selectedCategoryId) return;
+        deleteMutation.mutate([selectedCategoryId]);
     };
 
     const handleBulkDelete = () => {
-        const blocked = categories.filter(c => selectedIds.includes(c.category_id) && c.options.length > 0);
+        const blocked = paginatedItems.filter((c: CategoryInterface) => selectedIds.includes(c.categoryId) && c.options && c.options.length > 0);
         if (blocked.length > 0) {
-            const names = blocked.map(c => `"${c.name}"`).join(", ");
+            const names = blocked.map((c: CategoryInterface) => `"${c.name}"`).join(", ");
             setDeleteError(`Không thể xóa các danh mục: ${names} vì còn options liên kết.`);
-            setSelectedCategory(null);
+            setSelectedCategoryId(null);
             setIsDeleteConfirmOpen(true);
             return;
         }
-        setCategories(prev => prev.filter(c => !selectedIds.includes(c.category_id)));
-        setSelectedIds([]);
+        setDeleteError(null);
+        deleteMutation.mutate(selectedIds);
     };
+
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-64 bg-white rounded-3xl border border-gray-100">
+                <div className="flex flex-col items-center gap-2 text-gray-400">
+                    <Loader2 size={24} className="animate-spin text-[#0092B8]" />
+                    <p className="text-sm">Đang tải danh sách danh mục...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-6">
+            <Toast toast={toastState} onClose={() => setToastState(null)} />
+            
             {/* Header Actions */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -110,7 +173,7 @@ export default function CategoryList() {
                         <h2 className="text-lg font-bold text-gray-800 tracking-tight">Danh sách danh mục</h2>
                     )}
                 </div>
-                <button onClick={handleCreate} className="px-4 py-2 bg-[#0092B8] text-white text-sm font-semibold rounded-xl hover:bg-[#007a99] transition-colors shadow-sm flex items-center gap-2">
+                <button onClick={() => handleFormModal("create")} className="px-4 py-2 bg-[#0092B8] text-white text-sm font-semibold rounded-xl hover:bg-[#007a99] transition-colors shadow-sm flex items-center gap-2">
                     <Plus size={18} /> Tạo danh mục
                 </button>
             </div>
@@ -139,24 +202,24 @@ export default function CategoryList() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {paginatedItems.map((cat) => {
-                                const isSelected = selectedIds.includes(cat.category_id);
+                            {paginatedItems.map((cat: CategoryInterface) => {
+                                const isSelected = selectedIds.includes(cat.categoryId);
                                 return (
-                                    <tr key={cat.category_id} className={`hover:bg-blue-50/30 transition-colors ${isSelected ? "bg-blue-50/50" : ""}`}>
+                                    <tr key={cat.categoryId} className={`hover:bg-blue-50/30 transition-colors ${isSelected ? "bg-blue-50/50" : ""}`}>
                                         <td className="p-5">
                                             <div className="flex items-center justify-center">
                                                 <input
                                                     type="checkbox"
                                                     className="w-4 h-4 rounded-md border-gray-300 text-[#0092B8] cursor-pointer"
                                                     checked={isSelected}
-                                                    onChange={() => toggleSelect(cat.category_id)}
+                                                    onChange={() => toggleSelect(cat.categoryId)}
                                                 />
                                             </div>
                                         </td>
                                         {/* ID */}
                                         <td className="px-5 py-4">
                                             <span className="text-xs font-mono text-gray-400 bg-gray-50 border border-gray-100 px-2 py-1 rounded-lg">
-                                                #{cat.category_id}
+                                                #{cat.categoryId}
                                             </span>
                                         </td>
                                         {/* Name */}
@@ -176,19 +239,19 @@ export default function CategoryList() {
                                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all text-[#0092B8] bg-blue-50 border-blue-100 hover:bg-blue-100"
                                             >
                                                 <Settings2 size={13} />
-                                                {cat.options.length} options
+                                                {cat.options?.length || 0} options
                                             </button>
                                         </td>
                                         {/* Actions */}
                                         <td className="px-5 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button onClick={() => handleEdit(cat)} className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-all" title="Chỉnh sửa">
+                                                <button onClick={() => handleFormModal("edit", cat)} className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-all" title="Chỉnh sửa">
                                                     <Edit3 size={16} />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDeleteClick(cat)}
-                                                    className={`p-2 rounded-xl transition-all ${cat.options.length > 0 ? "text-gray-200 cursor-not-allowed" : "text-gray-400 hover:text-red-500 hover:bg-red-50"}`}
-                                                    title={cat.options.length > 0 ? "Không thể xóa: còn options liên kết" : "Xóa"}
+                                                    className={`p-2 rounded-xl transition-all ${cat.options?.length > 0 ? "text-gray-200 cursor-not-allowed" : "text-gray-400 hover:text-red-500 hover:bg-red-50"}`}
+                                                    title={cat.options?.length > 0 ? "Không thể xóa: còn options liên kết" : "Xóa"}
                                                 >
                                                     <Trash2 size={16} />
                                                 </button>
@@ -204,7 +267,7 @@ export default function CategoryList() {
                 {/* Pagination */}
                 <div className="flex items-center justify-between px-6 py-4 bg-white border-t border-gray-100">
                     <span className="text-sm text-gray-500 font-medium">
-                        Hiển thị <span className="font-bold text-gray-800">{paginatedItems.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</span> đến <span className="font-bold text-gray-800">{Math.min(currentPage * itemsPerPage, categories.length)}</span> trong <span className="font-bold text-gray-800">{categories.length}</span> danh mục
+                        Hiển thị <span className="font-bold text-gray-800">{paginatedItems.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</span> đến <span className="font-bold text-gray-800">{Math.min(currentPage * itemsPerPage, totalRecords)}</span> trong <span className="font-bold text-gray-800">{totalRecords}</span> danh mục
                     </span>
                     <div className="flex items-center gap-2">
                         <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 rounded-xl hover:bg-gray-100 disabled:opacity-50 transition-colors text-gray-600">
@@ -230,6 +293,7 @@ export default function CategoryList() {
                     category={selectedCategory}
                     mode={formMode}
                     onClose={() => setIsFormOpen(false)}
+                    onConfirm={handleSaveCategory}
                 />
             )}
 
@@ -238,7 +302,11 @@ export default function CategoryList() {
                 <CategoryOptionsPanel
                     category={selectedCategory}
                     onClose={() => setIsOptionsOpen(false)}
-                    onUpdate={handleUpdateCategory}
+                    onUpdate={() => {
+                        setIsOptionsOpen(false);
+                        queryClient.invalidateQueries({ queryKey: ['categories'] })
+                    }}
+                    onToast={showToast}
                 />
             )}
 
@@ -263,7 +331,11 @@ export default function CategoryList() {
                                 {deleteError ? "Đóng" : "Hủy"}
                             </button>
                             {!deleteError && (
-                                <button onClick={handleConfirmDelete} className="px-5 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors shadow-sm">
+                                <button
+                                    onClick={handleConfirmDelete}
+                                    disabled={deleteMutation.isPending}
+                                    className="px-5 py-2 flex items-center gap-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors shadow-sm disabled:opacity-50">
+                                    {deleteMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
                                     Xóa
                                 </button>
                             )}

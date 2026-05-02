@@ -2,7 +2,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Tag, User, Coins, Eye, Target, Clock } from 'lucide-react';
 import { MockNews, NewsItem } from '../../../feature/content-management/news/data/NewsMockData';
-import { MockEvents, EventItem } from '../../../feature/content-management/event/data/EventMockData';
+
 
 export default function NewsDetailPage() {
     const { newsId } = useParams<{ newsId: string }>();
@@ -21,8 +21,8 @@ export default function NewsDetailPage() {
         );
     }
 
-    const linkedEvent: EventItem | undefined = news.targetType === 'EVENT' && news.targetId
-        ? MockEvents.find((e: EventItem) => String(e.id) === String(news.targetId))
+    const linkedEvent: any | undefined = news.targetType === 'EVENT' && news.targetId
+        ? ([] as any[]).find((e: any) => String(e.id) === String(news.targetId))
         : undefined;
 
     const createdDate = new Date(news.createdTime).toLocaleString('vi-VN', {

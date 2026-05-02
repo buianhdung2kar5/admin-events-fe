@@ -1,51 +1,69 @@
 import { useState } from "react";
-import { X, Plus, Edit3, Trash2, Tag, Check } from "lucide-react";
-import { CategoryItem, CategoryOption } from "../data/CategoryMockData";
+import { X, Plus, Edit3, Trash2, Tag, Check, Loader2 } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { CategoryApi } from "../../../../services/events-management/CategoryApi";
+import { CategoryInterface, CategoryOptionInterface } from "../data/CategoryMockData";
 
 interface Props {
-    category: CategoryItem;
+    category: CategoryInterface;
     onClose: () => void;
-    onUpdate: (updated: CategoryItem) => void;
+    onUpdate: () => void;
+    onToast?: (msg: string, ok?: boolean) => void;
 }
 
-export default function CategoryOptionsPanel({ category, onClose, onUpdate }: Props) {
-    const [options, setOptions] = useState<CategoryOption[]>(category.options);
-    const [editingId, setEditingId] = useState<string | null>(null);
+export default function CategoryOptionsPanel({ category, onClose, onUpdate, onToast }: Props) {
+    const [editingId, setEditingId] = useState<number | null>(null);
     const [editingValue, setEditingValue] = useState("");
     const [newOptionName, setNewOptionName] = useState("");
     const [isAddingNew, setIsAddingNew] = useState(false);
 
-    const handleAddOption = () => {
-        if (!newOptionName.trim()) return;
-        const newOption: CategoryOption = {
-            category_option_id: `opt-${Date.now()}`,
-            category_id: category.category_id,
-            value: newOptionName.trim()
-        };
-        const updated = [...options, newOption];
-        setOptions(updated);
-        onUpdate({ ...category, options: updated });
-        setNewOptionName("");
-        setIsAddingNew(false);
+    const options = category.options || [];
+
+    const saveOptionMutation = useMutation({
+        mutationFn: async ({ idOption, value }: { idOption?: number, value: string }) => {
+            if (idOption) {
+                return await CategoryApi.updateCategoryOption({
+                    value: value,
+                    idCategory: category.categoryId,
+                    idOption: idOption
+                });
+            }
+            return await CategoryApi.createCategoryOption(value, category.categoryId);
+        },
+        onSuccess: () => {
+            onUpdate();
+            setEditingId(null);
+            setIsAddingNew(false);
+            setNewOptionName("");
+            if (onToast) onToast("Lưu option thành công", true);
+        },
+        onError: () => {
+            if (onToast) onToast("Có lỗi xảy ra khi lưu option", false);
+        }
+    });
+
+    const deleteOptionMutation = useMutation({
+        mutationFn: async (idOption: number[]) => {
+            return await CategoryApi.deleteCategoryOption(idOption, category.categoryId);
+        },
+        onSuccess: () => {
+            onUpdate();
+            if (onToast) onToast("Xóa option thành công", true);
+        },
+        onError: () => {
+            if (onToast) onToast("Có lỗi xảy ra khi xóa option", false);
+        }
+    });
+
+    const handleSaveOption = (idOption?: number) => {
+        const value = idOption ? editingValue : newOptionName;
+        if (!value.trim()) return;
+        saveOptionMutation.mutate({ idOption, value: value.trim() });
     };
 
-    const handleStartEdit = (option: CategoryOption) => {
-        setEditingId(option.category_option_id);
+    const handleStartEdit = (option: CategoryOptionInterface) => {
+        setEditingId(option.categoryOptionId);
         setEditingValue(option.value);
-    };
-
-    const handleSaveEdit = () => {
-        if (!editingValue.trim() || !editingId) return;
-        const updated = options.map(o => o.category_option_id === editingId ? { ...o, value: editingValue.trim() } : o);
-        setOptions(updated);
-        onUpdate({ ...category, options: updated });
-        setEditingId(null);
-    };
-
-    const handleDeleteOption = (id: string) => {
-        const updated = options.filter(o => o.category_option_id !== id);
-        setOptions(updated);
-        onUpdate({ ...category, options: updated });
     };
 
     return (
@@ -83,20 +101,20 @@ export default function CategoryOptionsPanel({ category, onClose, onUpdate }: Pr
                     ) : (
                         <>
                             {options.map((option) => (
-                                <div key={option.category_option_id} className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 group hover:border-gray-200 transition-all">
+                                <div key={option.categoryOptionId} className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl border border-gray-100 group hover:border-gray-200 transition-all">
                                     <div className="w-2 h-2 rounded-full bg-[#0092B8]/40 shrink-0" />
-                                    {editingId === option.category_option_id ? (
+                                    {editingId === option.categoryOptionId ? (
                                         <>
                                             <input
                                                 type="text"
                                                 value={editingValue}
                                                 onChange={(e) => setEditingValue(e.target.value)}
-                                                onKeyDown={(e) => e.key === "Enter" && handleSaveEdit()}
+                                                onKeyDown={(e) => e.key === "Enter" && handleSaveOption(editingId!)}
                                                 autoFocus
                                                 className="flex-1 bg-white border border-[#0092B8] rounded-lg px-3 py-1.5 text-sm outline-none"
                                             />
-                                            <button onClick={handleSaveEdit} className="p-1.5 text-green-500 hover:bg-green-50 rounded-lg transition-colors shrink-0">
-                                                <Check size={16} />
+                                            <button onClick={() => handleSaveOption(editingId!)} disabled={saveOptionMutation.isPending} className="p-1.5 text-green-500 hover:bg-green-50 rounded-lg transition-colors shrink-0 disabled:opacity-50">
+                                                {saveOptionMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                                             </button>
                                             <button onClick={() => setEditingId(null)} className="p-1.5 text-gray-400 hover:bg-gray-200 rounded-lg transition-colors shrink-0">
                                                 <X size={16} />
@@ -109,7 +127,7 @@ export default function CategoryOptionsPanel({ category, onClose, onUpdate }: Pr
                                                 <button onClick={() => handleStartEdit(option)} className="p-1.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors">
                                                     <Edit3 size={14} />
                                                 </button>
-                                                <button onClick={() => handleDeleteOption(option.category_option_id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                            <button onClick={() => deleteOptionMutation.mutate([option.categoryOptionId])} disabled={deleteOptionMutation.isPending} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50">
                                                     <Trash2 size={14} />
                                                 </button>
                                             </div>
@@ -128,13 +146,13 @@ export default function CategoryOptionsPanel({ category, onClose, onUpdate }: Pr
                                 type="text"
                                 value={newOptionName}
                                 onChange={(e) => setNewOptionName(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
+                                onKeyDown={(e) => e.key === "Enter" && handleSaveOption()}
                                 autoFocus
                                 placeholder="Nhập tên option mới..."
                                 className="flex-1 bg-white border border-[#0092B8]/30 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[#0092B8]"
                             />
-                            <button onClick={handleAddOption} className="p-1.5 text-green-500 hover:bg-green-50 rounded-lg transition-colors shrink-0">
-                                <Check size={16} />
+                            <button onClick={() => handleSaveOption()} disabled={saveOptionMutation.isPending} className="p-1.5 text-green-500 hover:bg-green-50 rounded-lg transition-colors shrink-0 disabled:opacity-50">
+                                {saveOptionMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                             </button>
                             <button onClick={() => { setIsAddingNew(false); setNewOptionName(""); }} className="p-1.5 text-gray-400 hover:bg-gray-200 rounded-lg transition-colors shrink-0">
                                 <X size={16} />

@@ -4,44 +4,26 @@
     <meta charset="utf-8" />
     <title>Admin Events</title>
     <script>
-      /**
-       * GitHub Pages SPA redirect trick
-       *
-       * GitHub Pages là static server. Khi React Router điều hướng tới
-       * /login, /dashboard... server không tìm được file vật lý → 404.
-       *
-       * Fix: Mọi 404 được load file này. Script dưới encode path hiện tại
-       * thành query string rồi redirect về index.html để React Router xử lý.
-       *
-       * Hỗ trợ cả:
-       *   - Root domain:  events.net.vn/login
-       *   - Subfolder:    events.net.vn/admin-events-fe/login
-       */
-      (function () {
-        var l = window.location;
-        var segments = l.pathname.split("/").filter(Boolean);
-
-        // Tìm base path:
-        // Nếu app chạy ở subfolder (VD: /admin-events-fe/),
-        // segment đầu tiên là tên repo. Phân biệt bằng cách
-        // check xem homepage có CNAME hay không — không thể biết
-        // tại runtime. Dùng cách an toàn: thử gửi về / trước.
-        // Script trong index.html sẽ restore đúng path.
-        var encodedPath = encodeURIComponent(
-          segments.join("/") +
-            (l.search ? "?" + l.search.slice(1) : "") +
-            l.hash
-        );
-
-        l.replace(
-          l.protocol +
-            "//" +
-            l.hostname +
-            (l.port ? ":" + l.port : "") +
-            "/?p=" +
-            encodedPath
-        );
-      })();
+      // GitHub Pages SPA redirect trick
+      // Khi GitHub Pages trả 404 (do SPA route như /login, /user-management, ...),
+      // script này encode lại path vào query string rồi redirect về index.html
+      var l = window.location;
+      l.replace(
+        l.protocol +
+          "//" +
+          l.hostname +
+          (l.port ? ":" + l.port : "") +
+          l.pathname
+            .split("/")
+            .slice(0, 1)
+            .join("/") +
+          "/?p=" +
+          encodeURIComponent(
+            l.pathname.slice(1) +
+              (l.search ? l.search : "") +
+              l.hash
+          )
+      );
     </script>
   </head>
   <body></body>

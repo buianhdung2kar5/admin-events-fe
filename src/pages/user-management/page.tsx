@@ -1,9 +1,7 @@
 import ListUser from "../../feature/user-management/user/components/ListUser";
 import { UserCardData } from "../../feature/user-management/user/data/UserMockData";
 import GroupFilter from "../../feature/user-management/user/components/GroupFilter";
-import OrgList from "../../feature/user-management/organization/components/OrgList";
 import DocList from "../../feature/user-management/verify-document/components/DocList";
-import { OrgCardData } from "../../feature/user-management/organization/data/OrgMockData";
 import { DocCardData } from "../../feature/user-management/verify-document/data/DocMockData";
 import { useParams } from "react-router-dom";
 import { useState } from "react";
@@ -16,8 +14,7 @@ export default function UserManagement(){
 
     const renderContent = () => {
         switch (type) {
-            case "organization":
-                return <OrgList />;
+
             case "verify-document":
                 return <DocList />;
             case "report":
@@ -32,7 +29,7 @@ export default function UserManagement(){
 
     const getTitle = () => {
         switch (type) {
-            case "organization": return "Quản lý tổ chức";
+
             case "verify-document": return "Xác thực & Duyệt hồ sơ";
             case "report": return "Quản lý báo cáo vi phạm";
             case "activity": return "Nhật ký hoạt động";
@@ -42,7 +39,7 @@ export default function UserManagement(){
 
     const currentCardData = () => {
         switch (type) {
-            case "organization": return OrgCardData;
+
             case "verify-document": return DocCardData;
             case "report": return []; // No cards for report
             case "activity": return [
@@ -85,7 +82,7 @@ export default function UserManagement(){
             )}
 
             <div className="flex flex-col gap-6">
-                {(type === 'user' || type === 'organization' || !type) && (
+                {(type === 'user' || !type) && (
                     <GroupFilter setFilter={setFilter} />
                 )}
                 

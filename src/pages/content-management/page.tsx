@@ -11,8 +11,6 @@ import AttendanceList from "../../feature/content-management/attendance/componen
 import VenueList from "../../feature/content-management/venue/components/VenueList";
 
 // Import actual data
-import { CategoryCardData } from "../../feature/content-management/category/data/CategoryMockData";
-import { EventCardData } from "../../feature/content-management/event/data/EventMockData";
 import { FeaturedCardData } from "../../feature/content-management/featured/data/FeaturedMockData";
 import { NewsCardData } from "../../feature/content-management/news/data/NewsMockData";
 import { NotifCardData } from "../../feature/content-management/notification/data/NotifMockData";
@@ -58,14 +56,14 @@ export default function ContentManagement() {
 
     const currentCardData = () => {
         switch (type) {
-            case "category": return CategoryCardData;
-            case "event": return EventCardData;
+            case "category": return [];
+            case "event": return [];
             case "featured": return FeaturedCardData;
             case "news": return NewsCardData;
             case "notification": return NotifCardData;
             case "recruitment": return RecruitmentCardData;
             case "venue": return VenueCardData;
-            default: return CategoryCardData;
+            default: return [];
         }
     };
 

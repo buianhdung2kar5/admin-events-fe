@@ -7,6 +7,9 @@ import SettingsPage from "../pages/settings/page";
 import LoginPage from "../pages/login/page";
 import ProtectedRoute from "../auth/ProtectedRoute";
 import NewsDetailPage from "../pages/content-management/news-detail/page";
+import UserDetailPage from "../pages/user-management/user-detail/page";
+import OrganizationDetailPage from "../pages/user-management/organization-detail/page";
+import EventDetailPage from "../pages/content-management/event-detail/page";
 
 export default function Path() {
     return [
@@ -25,8 +28,12 @@ export default function Path() {
             element: <ProtectedRoute><Dashboard /></ProtectedRoute>,
         },
         {
-            path: "*",
-            element: <Navigate to="/dashboard" />,
+            path: "/user-management/users/:userId",
+            element: <ProtectedRoute><UserDetailPage /></ProtectedRoute>,
+        },
+        {
+            path: "/user-management/organization/:id",
+            element: <ProtectedRoute><OrganizationDetailPage /></ProtectedRoute>,
         },
         {
             path: "/user-management/:type?",
@@ -35,6 +42,10 @@ export default function Path() {
         {
             path: "/content-management/news/:newsId",
             element: <ProtectedRoute><NewsDetailPage /></ProtectedRoute>,
+        },
+        {
+            path: "/content-management/events/:eventId",
+            element: <ProtectedRoute><EventDetailPage /></ProtectedRoute>,
         },
         {
             path: "/content-management/:type?",
@@ -47,6 +58,10 @@ export default function Path() {
         {
             path: "/settings",
             element: <ProtectedRoute><SettingsPage /></ProtectedRoute>,
+        },
+        {
+            path: "*",
+            element: <Navigate to="/dashboard" />,
         },
     ];
 }

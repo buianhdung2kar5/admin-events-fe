@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate, Navigate } from "react-router-dom";
-import { MockEvents, EventItem } from "../../event/data/EventMockData";
+
 import AttendancePanel from "./AttendancePanel";
 
 export default function AttendanceList() {
@@ -8,11 +8,11 @@ export default function AttendanceList() {
     const navigate = useNavigate();
     const eventId = searchParams.get("eventId");
     
-    const [event, setEvent] = useState<EventItem | null>(null);
+    const [event, setEvent] = useState<any | null>(null);
 
     useEffect(() => {
         if (eventId) {
-            const found = MockEvents.find(e => e.id === eventId);
+            const found = ([] as any[]).find((e: any) => e.id === eventId);
             if (found) {
                 setEvent(found);
             }

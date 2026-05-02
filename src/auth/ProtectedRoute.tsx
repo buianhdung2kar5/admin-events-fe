@@ -6,10 +6,6 @@ interface Props {
   children: ReactNode;
 }
 
-/**
- * Bọc quanh các route cần bảo vệ.
- * Nếu chưa đăng nhập → redirect về /login.
- */
 export default function ProtectedRoute({ children }: Props) {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
