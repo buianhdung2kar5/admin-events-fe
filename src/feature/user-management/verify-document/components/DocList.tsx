@@ -206,7 +206,7 @@ export default function DocList({ filter }: DocListProps) {
                 </div>
 
                 {/* Pagination */}
-                {totalPages > 1 && (
+                {totalPages >= 1 && (
                     <div className="px-6 py-4 border-t border-gray-50 flex items-center justify-between text-xs text-gray-400 font-medium">
                         <span>Hiển thị <span className="text-gray-700 font-bold">{documents.length}</span> / <span className="text-gray-700 font-bold">{totalElements}</span> hồ sơ</span>
                         <div className="flex items-center gap-1.5">

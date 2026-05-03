@@ -1,57 +1,71 @@
-import { useState, useMemo } from "react";
-import { Search, Filter, Eye, AlertTriangle } from "lucide-react";
-import { MockReports, ReportItem, ReportStatus, ReportCategory } from "../data/ReportMockData";
+import { useState, useMemo, useEffect } from "react";
+import { Search, Filter, Eye, AlertTriangle, Loader2, Mail, Phone, User } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ReportsManagement } from "../../../../services/system-management/ReportsManagement";
+import { ReportItem, ReportStatus } from "../DTO/ReportsInterface";
 import ReportDetailModal from "./ReportDetailModal";
+import Toast from "../../../../components/common/Toast";
+
+const PAGE_SIZE = 10;
 
 export default function ReportList() {
-    const [reports, setReports] = useState<ReportItem[]>(MockReports);
+    const [currentPage, setCurrentPage] = useState(1);
     const [search, setSearch] = useState("");
     const [filterStatus, setFilterStatus] = useState<ReportStatus | "ALL">("ALL");
-    const [filterCategory, setFilterCategory] = useState<ReportCategory | "ALL">("ALL");
     const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
+    const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+
+    const queryClient = useQueryClient();
+
+    const { data: response, isLoading, isError } = useQuery({
+        queryKey: ['reports', currentPage],
+        queryFn: async () => {
+            const res = await ReportsManagement.getAllReports(currentPage - 1, PAGE_SIZE, ['createdTime,desc']);
+            return res.object;
+        }
+    });
+
+    const reports = response?.content || [];
+    const totalElements = response?.totalElements || 0;
+    const totalPages = response?.totalPages || 1;
 
     const filtered = useMemo(() => {
-        return reports.filter(r => {
-            const matchSearch = r.reporterName.toLowerCase().includes(search.toLowerCase()) ||
-                                r.targetName.toLowerCase().includes(search.toLowerCase()) ||
-                                r.reporterId.toLowerCase().includes(search.toLowerCase()) ||
-                                r.targetId.toLowerCase().includes(search.toLowerCase());
-            const matchStatus = filterStatus === "ALL" || r.status === filterStatus;
-            const matchCat = filterCategory === "ALL" || r.reportCategory === filterCategory;
-            return matchSearch && matchStatus && matchCat;
+        return reports.filter((r: ReportItem) => {
+            const searchLower = search.toLowerCase();
+            const matchSearch = (r.name || "").toLowerCase().includes(searchLower) ||
+                                (r.email || "").toLowerCase().includes(searchLower) ||
+                                (r.title || "").toLowerCase().includes(searchLower) ||
+                                (r.phoneNumber || "").includes(search) ||
+                                String(r.reportId).includes(search);
+            
+            const matchStatus = filterStatus === "ALL" || (r.status || "PENDING") === filterStatus;
+            return matchSearch && matchStatus;
         });
-    }, [reports, search, filterStatus, filterCategory]);
+    }, [reports, search, filterStatus]);
 
-    const getCategoryStyles = (cat: string) => {
-        switch (cat) {
-            case "HARASSMENT": return "bg-purple-50 text-purple-600 border-purple-200";
-            case "SPAM": return "bg-amber-50 text-amber-600 border-amber-200";
-            case "ILLEGAL": return "bg-red-50 text-red-600 border-red-200";
-            case "FAKE": return "bg-orange-50 text-orange-600 border-orange-200";
-            default: return "bg-gray-50 text-gray-600 border-gray-200";
+    useEffect(() => { setCurrentPage(1); }, [search, filterStatus]);
+
+    const handleResolve = async (id: number) => {
+        try {
+            await ReportsManagement.resolveReport(id);
+            setToast({ msg: "Đã xử lý báo cáo thành công!", ok: true });
+            queryClient.invalidateQueries({ queryKey: ['reports'] });
+            setSelectedReport(null);
+        } catch (error: any) {
+            setToast({ msg: error.message || "Lỗi khi xử lý báo cáo", ok: false });
         }
     };
 
-    const handleResolve = (id: string) => {
-        setReports(prev => prev.map(r => r.id === id ? { 
-            ...r, 
-            status: "RESOLVED", 
-            resolvedAt: new Date().toISOString(),
-            resolvedBy: "admin-01" 
-        } : r));
-    };
-
-    const handleSuspendTarget = (id: string, targetType: string, reason: string, duration: number) => {
-        // TODO: Call POST /admin/bulk-suspend
-        alert(`Đã gửi lệnh khóa ${targetType} (ID: ${id}) trong ${duration} ngày.\nLý do: ${reason}`);
-    };
+    if (isError) return <div className="p-12 text-center text-red-500 bg-white rounded-3xl border border-red-100 font-medium">Lỗi khi tải danh sách báo cáo!</div>;
 
     return (
-        <div className="flex flex-col gap-6 animate-[fadeIn_0.3s_ease]">
+        <div className="flex flex-col gap-6 animate-[fadeIn_0.3s_ease] relative">
+            <Toast toast={toast} onClose={() => setToast(null)} />
+            
             <div className="flex flex-col md:flex-row items-center gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
                 <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:border-[#0092B8] transition-all flex-1 w-full">
                     <Search size={18} className="text-gray-400 shrink-0" />
-                    <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo tên/ID người báo cáo hoặc đối tượng..." className="text-sm outline-none bg-transparent w-full placeholder:text-gray-400" />
+                    <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo tên, email, tiêu đề hoặc mã báo cáo..." className="text-sm outline-none bg-transparent w-full placeholder:text-gray-400" />
                 </div>
                 
                 <div className="flex items-center gap-3 shrink-0 w-full md:w-auto">
@@ -63,71 +77,83 @@ export default function ReportList() {
                             <option value="RESOLVED">Đã xử lý (RESOLVED)</option>
                         </select>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value as any)} className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-600 outline-none focus:border-[#0092B8] bg-white cursor-pointer">
-                            <option value="ALL">Tất cả loại vi phạm</option>
-                            <option value="HARASSMENT">Quấy rối (HARASSMENT)</option>
-                            <option value="SPAM">Spam (SPAM)</option>
-                            <option value="ILLEGAL">Phạm pháp (ILLEGAL)</option>
-                            <option value="FAKE">Giả mạo (FAKE)</option>
-                            <option value="INAPPROPRIATE">Không phù hợp</option>
-                        </select>
-                    </div>
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden relative min-h-[300px]">
+                {isLoading && (
+                    <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                        <Loader2 className="animate-spin text-[#0092B8]" size={32} />
+                    </div>
+                )}
+                
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase font-semibold tracking-wider">
                             <tr>
                                 <th className="px-6 py-4">Thời gian</th>
-                                <th className="px-6 py-4">Người báo cáo</th>
-                                <th className="px-6 py-4">Đối tượng bị báo cáo</th>
-                                <th className="px-6 py-4">Phân loại</th>
+                                <th className="px-6 py-4">Người gửi</th>
+                                <th className="px-6 py-4">Nội dung báo cáo</th>
+                                <th className="px-6 py-4">Thông tin liên hệ</th>
                                 <th className="px-6 py-4 text-center">Trạng thái</th>
                                 <th className="px-6 py-4 text-right">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {filtered.length === 0 ? (
+                            {filtered.length === 0 && !isLoading ? (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-12 text-center text-gray-400 text-sm">
                                         Không tìm thấy khiếu nại/báo cáo nào
                                     </td>
                                 </tr>
-                            ) : filtered.map(report => (
-                                <tr key={report.id} className={`hover:bg-gray-50/80 transition-colors ${report.status === 'PENDING' ? 'bg-red-50/10' : ''}`}>
+                            ) : filtered.map((report: ReportItem) => (
+                                <tr key={report.reportId} className={`hover:bg-gray-50/80 transition-colors ${!report.status || report.status === 'PENDING' ? 'bg-red-50/10' : ''}`}>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2">
-                                            {report.status === 'PENDING' && <AlertTriangle size={14} className="text-red-500" />}
-                                            <span className="text-gray-600">{new Date(report.createdAt).toLocaleString("vi-VN")}</span>
+                                            {(!report.status || report.status === 'PENDING') && <AlertTriangle size={14} className="text-red-500" />}
+                                            <span className="text-gray-600 font-medium">{new Date(report.createdTime).toLocaleString("vi-VN")}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-gray-800">{report.reporterName}</span>
-                                            <span className="text-xs text-gray-500">{report.reporterId}</span>
+                                        <div className="flex flex-col min-w-[150px]">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-7 h-7 rounded-full bg-[#0092B8]/10 flex items-center justify-center text-[#0092B8]">
+                                                    <User size={14} />
+                                                </div>
+                                                <span className="font-bold text-gray-800">{report.name}</span>
+                                            </div>
+                                            <span className="text-xs text-gray-400 mt-1 pl-9">UID: {report.reporter?.userId}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-gray-800">{report.targetName}</span>
-                                            <span className="text-xs font-semibold text-red-500">{report.targetType}: {report.targetId}</span>
+                                        <div className="flex flex-col max-w-[250px]">
+                                            <span className="font-bold text-gray-800 truncate">{report.title}</span>
+                                            <span className="text-xs text-gray-500 line-clamp-1 mt-1">{report.description}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`inline-flex px-2 py-1 rounded-lg text-[11px] font-bold border tracking-wide ${getCategoryStyles(report.reportCategory)}`}>
-                                            {report.reportCategory}
-                                        </span>
+                                        <div className="flex flex-col gap-1 text-[11px]">
+                                            <div className="flex items-center gap-1.5 text-gray-600 font-medium">
+                                                <Mail size={12} className="text-[#0092B8]" />
+                                                {report.email}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-gray-600 font-medium">
+                                                <Phone size={12} className="text-[#0092B8]" />
+                                                {report.phoneNumber}
+                                            </div>
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-[11px] font-bold border tracking-wide uppercase ${report.status === 'RESOLVED' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
-                                            {report.status}
+                                        <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black border tracking-widest uppercase transition-all shadow-sm ${
+                                            report.status === 'RESOLVED' 
+                                            ? 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-emerald-100/50' 
+                                            : 'bg-amber-50 text-amber-600 border-amber-200 shadow-amber-100/50 animate-pulse'
+                                        }`}>
+                                            {report.status || "PENDING"}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button onClick={() => setSelectedReport(report)} className={`p-2 rounded-xl transition-all ${report.status === 'PENDING' ? 'text-red-500 hover:bg-red-100 bg-red-50' : 'text-gray-400 hover:text-[#0092B8] hover:bg-blue-50'}`} title="Xem chi tiết & Xử lý">
+                                        <button onClick={() => setSelectedReport(report)} className={`p-2 rounded-xl transition-all ${!report.status || report.status === 'PENDING' ? 'text-red-500 hover:bg-red-100 bg-red-50' : 'text-gray-400 hover:text-[#0092B8] hover:bg-blue-50'}`} title="Xem chi tiết & Xử lý">
                                             <Eye size={18} />
                                         </button>
                                     </td>
@@ -136,6 +162,23 @@ export default function ReportList() {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="px-6 py-4 border-t border-gray-50 flex items-center justify-between text-xs text-gray-400 font-medium bg-gray-50/30">
+                        <span>Hiển thị <span className="text-gray-700 font-bold">{filtered.length}</span> / <span className="text-gray-700 font-bold">{totalElements}</span> báo cáo</span>
+                        <div className="flex items-center gap-1.5">
+                            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                                className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-white transition-colors disabled:opacity-40">Trước</button>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                                <button key={p} onClick={() => setCurrentPage(p)}
+                                    className={`px-3 py-1.5 rounded-lg font-bold transition-colors ${p === currentPage ? "bg-[#0092B8] text-white border border-[#0092B8]" : "border border-gray-200 hover:bg-white"}`}>{p}</button>
+                            ))}
+                            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                                className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-white transition-colors disabled:opacity-40">Sau</button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {selectedReport && (
@@ -143,7 +186,6 @@ export default function ReportList() {
                     report={selectedReport}
                     onClose={() => setSelectedReport(null)}
                     onResolve={handleResolve}
-                    onSuspendTarget={handleSuspendTarget}
                 />
             )}
         </div>
