@@ -85,7 +85,6 @@ export default function UserManagement(){
                 {(type === 'user' || !type) && (
                     <GroupFilter setFilter={setFilter} />
                 )}
-                
                 <section className="flex flex-col gap-8">
                     {renderContent()}
                 </section>
