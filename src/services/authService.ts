@@ -100,6 +100,57 @@ export function onAuthChange(callback: (user: AdminUser | null) => void): () => 
   });
 }
 
+/** Kiểm tra token có hết hạn hay không */
+export function isTokenExpired(token: string): boolean {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      window.atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+
+    const { exp } = JSON.parse(jsonPayload);
+    // Trả về true nếu token hết hạn trong vòng 5 phút tới (để an toàn)
+    return Date.now() / 1000 >= exp - 300;
+  } catch {
+    return true;
+  }
+}
+
+/** Làm mới token từ Firebase */
+export async function refreshToken(): Promise<string | null> {
+  const user = auth.currentUser;
+  if (!user) return null;
+
+  try {
+    const newToken = await user.getIdToken(true);
+    const adminUser = getStoredUser();
+    if (adminUser) {
+      saveSession(newToken, adminUser);
+    }
+    return newToken;
+  } catch (error) {
+    console.error("Lỗi khi refresh token:", error);
+    return null;
+  }
+}
+
+/** Lấy token hợp lệ (tự động refresh nếu cần) */
+export async function getValidToken(): Promise<string | null> {
+  let token = getStoredToken();
+  if (!token) return null;
+
+  if (isTokenExpired(token)) {
+    console.log("Token expired, refreshing...");
+    token = await refreshToken();
+  }
+
+  return token;
+}
+
 // ─── Quản lý LocalStorage ───────────────────────────────────────────────────
 
 /** Lưu token + user vào localStorage */

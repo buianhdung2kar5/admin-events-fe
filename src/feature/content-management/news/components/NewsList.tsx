@@ -1,29 +1,42 @@
-import React from 'react';
+import React, { useState } from 'react';
 import TableData from '../../../../components/TableData';
-import { MockNews, NewsItem } from '../data/NewsMockData';
-import { Edit3, Trash2, Eye } from 'lucide-react';
+import { NewsItem } from '../data/NewsMockData';
+import { Trash2, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import NewsFormModal from './NewsFormModal';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { NewApi } from '../../../../services/news-management/NewApi';
+import Toast from '../../../../components/common/Toast';
 
 const NewsList: React.FC = () => {
     const navigate = useNavigate();
-    const [isModalOpen, setIsModalOpen] = React.useState(false);
-    const [editingNews, setEditingNews] = React.useState<NewsItem | null>(null);
-    const [newsList, setNewsList] = React.useState(MockNews);
+    const queryClient = useQueryClient();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+    const [currentPage, setCurrentPage] = useState(0);
+    const pageSize = 6;
+
+    const { data: newsResponse, isLoading } = useQuery({
+        queryKey: ['news', currentPage, pageSize],
+        queryFn: () => NewApi.getAllNews(currentPage, pageSize, ["createdTime,desc"]),
+    });
+
+    const newsList = newsResponse?.object?.content || [];
+    const totalElements = newsResponse?.object?.totalElements || 0;
+    const totalPages = newsResponse?.object?.totalPages || 0;
 
     const handleCreate = () => {
-        setEditingNews(null);
         setIsModalOpen(true);
     };
 
-    const handleEdit = (item: NewsItem) => {
-        setEditingNews(item);
-        setIsModalOpen(true);
+    const handleDelete = () => {
+        setToast({ msg: "Tính năng xóa đang được cập nhật", ok: true });
+        setTimeout(() => setToast(null), 3000);
     };
 
-    const handleSave = (data: any) => {
-        console.log("Save news:", data);
+    const handleSaveSuccess = () => {
         setIsModalOpen(false);
+        queryClient.invalidateQueries({ queryKey: ['news'] });
     };
 
     const columns = [
@@ -31,15 +44,14 @@ const NewsList: React.FC = () => {
             header: "Tin tức",
             render: (item: NewsItem) => (
                 <div className="flex items-center gap-4 py-1">
-                    <div className="w-16 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
-                        <img src={item.banner} alt={item.title} className="w-full h-full object-cover" />
+                    <div className="w-16 h-11 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100">
+                        <img src={item.banner} alt={item.title} className="w-full h-full object-cover" onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://placehold.co/600x400?text=No+Image';
+                        }} />
                     </div>
-                    <div className="flex flex-col min-w-0 max-w-[280px]">
-                        <div className="flex items-center gap-2">
-                            {item.isFeatured && <span className="text-red-500"></span>}
-                            <span className="font-bold text-gray-800 text-sm truncate">{item.title}</span>
-                        </div>
-                        <span className="text-[10px] text-gray-400 truncate">{item.date} · {item.author}</span>
+                    <div className="flex flex-col min-w-0 max-w-[350px]">
+                        <span className="font-bold text-gray-800 text-sm truncate" title={item.title}>{item.title}</span>
+                        <span className="text-[10px] text-gray-400 font-medium">ID: {item.newsId}</span>
                     </div>
                 </div>
             )
@@ -48,11 +60,11 @@ const NewsList: React.FC = () => {
             header: "Thẻ",
             render: (item: NewsItem) => (
                 <div className="flex gap-1 flex-wrap max-w-[150px]">
-                    {item.tag.split(',').map((t, idx) => (
-                        <span key={idx} className="px-2 py-0.5 bg-gray-50 text-gray-500 border border-gray-100 rounded text-[10px] font-medium">
+                    {item.tag ? item.tag.split(',').map((t, idx) => (
+                        <span key={idx} className="px-2 py-0.5 bg-blue-50 text-[#0092B8] border border-blue-100 rounded text-[10px] font-bold uppercase tracking-wider">
                             {t.trim()}
                         </span>
-                    ))}
+                    )) : <span className="text-gray-300 text-[10px]">Trống</span>}
                 </div>
             )
         },
@@ -60,9 +72,17 @@ const NewsList: React.FC = () => {
             header: "Phần thưởng",
             render: (item: NewsItem) => (
                 <div className="flex flex-col">
-                    <span className="text-xs text-amber-600 font-bold">{item.totalRewardCoin > 0 ? `${item.totalRewardCoin.toLocaleString()} xu` : 'Không có'}</span>
-                    {item.rewardPerMinute > 0 && <span className="text-[10px] text-gray-400">{item.rewardPerMinute} xu/phút</span>}
+                    <span className="text-xs text-amber-600 font-bold">{item.totalRewardCoin > 0 ? `${item.totalRewardCoin.toLocaleString()} xu` : '0 xu'}</span>
+                    <span className="text-[10px] text-gray-400 font-medium">{item.rewardPerMinute} xu/phút</span>
                 </div>
+            )
+        },
+        {
+            header: "Ngày tạo",
+            render: (item: NewsItem) => (
+                <span className="text-xs text-gray-500 font-medium">
+                    {new Date(item.createdTime).toLocaleDateString('vi-VN')}
+                </span>
             )
         },
         {
@@ -73,23 +93,21 @@ const NewsList: React.FC = () => {
         },
         {
             header: "Hành động",
+            align: 'right' as const,
             render: (item: NewsItem) => (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-end gap-2">
                     <button
                         onClick={() => navigate(`/content-management/news/${item.newsId}`)}
-                        className="p-1.5 hover:bg-gray-100 text-gray-400 hover:text-gray-600 rounded-lg transition-colors"
+                        className="p-2 hover:bg-gray-100 text-gray-400 hover:text-blue-500 rounded-lg transition-all"
                         title="Xem chi tiết"
                     >
                         <Eye size={16} />
                     </button>
                     <button
-                        onClick={() => handleEdit(item)}
-                        className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-[#0092B8] transition-colors"
-                        title="Chỉnh sửa"
+                        onClick={handleDelete}
+                        className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-lg transition-all"
+                        title="Xóa"
                     >
-                        <Edit3 size={16} />
-                    </button>
-                    <button className="p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-lg transition-colors" title="Xóa">
                         <Trash2 size={16} />
                     </button>
                 </div>
@@ -98,29 +116,99 @@ const NewsList: React.FC = () => {
     ];
 
     return (
-        <div className="flex flex-col gap-4">
-            <div className="flex justify-end">
+        <div className="flex flex-col gap-6">
+            <div className="flex justify-between items-center bg-white p-4 rounded-lg border border-gray-100">
+                <div>
+                    <h2 className="text-xl font-bold text-gray-800 tracking-tight">Quản lý Tin tức</h2>
+                    <p className="text-xs text-gray-400 font-medium">Quản lý nội dung bài viết và phần thưởng coin</p>
+                </div>
                 <button
                     onClick={handleCreate}
-                    className="flex items-center gap-2 bg-[#0092B8] text-white px-5 py-2.5 rounded-xl hover:bg-[#007a99] transition-colors shadow-sm font-semibold"
+                    className="flex items-center gap-2 bg-[#0092B8] text-white px-6 py-2.5 rounded-lg hover:bg-[#007a99] transition-all font-bold text-sm"
                 >
-                    Tạo tin tức
+                    Tạo tin tức mới
                 </button>
             </div>
-            <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
+
+            <div className="relative">
+                {isLoading && (
+                    <div className="absolute inset-0 z-10 bg-white/50 backdrop-blur-[1px] flex items-center justify-center rounded-lg">
+                        <div className="w-8 h-8 border-4 border-blue-100 border-t-[#0092B8] rounded-full animate-spin" />
+                    </div>
+                )}
+
                 <TableData
                     data={newsList}
                     columns={columns}
-                    className="w-full"
-                    title="Danh sách tin tức"
-                    totalCount={newsList.length}
+                    className="w-full border-none shadow-none"
+                    title="Danh sách bài viết"
+                    totalCount={totalElements}
                 />
+
+                {totalPages > 0 && (
+                    <div className="flex items-center justify-between px-6 py-4 bg-white border-t border-gray-100">
+                        <span className="text-sm text-gray-500 font-medium">
+                            Hiển thị{' '}
+                            <span className="font-semibold text-gray-800">
+                                {newsList.length > 0 ? currentPage * pageSize + 1 : 0}
+                            </span>{' '}
+                            đến{' '}
+                            <span className="font-semibold text-gray-800">
+                                {Math.min((currentPage + 1) * pageSize, totalElements)}
+                            </span>{' '}
+                            trong{' '}
+                            <span className="font-semibold text-gray-800">{totalElements}</span>{' '}
+                            bài viết
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                                disabled={currentPage === 0 || totalPages === 0}
+                                className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 transition-colors text-gray-600"
+                            >
+                                <ChevronLeft size={18} />
+                            </button>
+                            <div className="flex items-center gap-1">
+                                {Array.from({ length: totalPages }).map((_, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setCurrentPage(i)}
+                                        className={`w-8 h-8 rounded-lg text-sm font-semibold transition-all ${
+                                            currentPage === i
+                                            ? 'bg-[#0092B8] text-white'
+                                            : 'text-gray-600 hover:bg-gray-100'
+                                        }`}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                ))}
+                            </div>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                                disabled={currentPage >= totalPages - 1 || totalPages === 0}
+                                className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 transition-colors text-gray-600"
+                            >
+                                <ChevronRight size={18} />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
+
             {isModalOpen && (
                 <NewsFormModal
-                    news={editingNews}
                     onClose={() => setIsModalOpen(false)}
-                    onSave={handleSave}
+                    onSaveSuccess={handleSaveSuccess}
+                />
+            )}
+
+            {toast && (
+                <Toast
+                    toast={{
+                        msg: toast.msg,
+                        ok: toast.ok
+                    }}
+                    onClose={() => setToast(null)}
                 />
             )}
         </div>

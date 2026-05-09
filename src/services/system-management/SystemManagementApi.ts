@@ -14,7 +14,7 @@ export const SystemManagementApi= {
         return apiClient.get("/admin/statistics")
     },
 
-    buldSuspend(data:any): Promise<ApiResponse>{
+    bulkAction(data:any): Promise<ApiResponse>{
         return apiClient.post<any, ApiResponse>("/admin/bulk-action",data)
     }
 

@@ -9,6 +9,7 @@ import NotifList from "../../feature/content-management/notification/components/
 import RecruitmentList from "../../feature/content-management/recruitment/components/RecruitmentList";
 import AttendanceList from "../../feature/content-management/attendance/components/AttendanceList";
 import VenueList from "../../feature/content-management/venue/components/VenueList";
+import FeedbackList from "../../feature/content-management/feedback/components/FeedbackList";
 
 // Import actual data
 import { FeaturedCardData } from "../../feature/content-management/featured/data/FeaturedMockData";
@@ -22,6 +23,9 @@ export default function ContentManagement() {
 
     if (type === "attendance") {
         return <AttendanceList />;
+    }
+    if (type === "feedback") {
+        return <FeedbackList />;
     }
 
     const getTitle = () => {
@@ -93,7 +97,7 @@ export default function ContentManagement() {
 
             {/* Grid layout adapts to number of cards (8 vs 4/6) */}
             <div className={`grid grid-cols-1 md:grid-cols-2 ${cards.length > 6 ? 'xl:grid-cols-8' : cards.length > 4 ? 'xl:grid-cols-6' : 'xl:grid-cols-4'} gap-4`}>
-                {cards.map((item, index) => (
+                {cards.map((item: any, index: number) => (
                     <div key={index} className="flex flex-col gap-2 items-center justify-center bg-white p-6 py-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
                         <p className={`text-3xl font-bold ${item.color || 'text-gray-800'}`}>{item.value}</p>
                         <h1 className="text-[10px] font-bold text-gray-400 text-center uppercase tracking-wider">{item.title}</h1>

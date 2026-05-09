@@ -1,10 +1,20 @@
 import { useState } from "react";
 import { ArrowLeft, Eye, Check, XCircle, Search, X } from "lucide-react";
-import { Applicant, ApplicationStatus, MockApplicants, Recruitment } from "../data/RecruitmentMockData";
+import { Applicant, ApplicationStatus } from "../data/RecruitmentMockData";
 import ApplicantDetailModal from "./ApplicantDetailModal";
 
+// Minimal recruitment info needed for this view
+interface RecruitmentRef {
+    ctvRecruitmentId: number;
+    roleName: string;
+    title: string;
+}
+
+// Placeholder applicants until API is integrated
+const MockApplicants: Applicant[] = [];
+
 interface Props {
-    recruitment: Recruitment;
+    recruitment: RecruitmentRef;
     onBack: () => void;
 }
 
@@ -19,7 +29,7 @@ const STATUS_LABELS: Record<ApplicationStatus, string> = {
 
 export default function ApplicantList({ recruitment, onBack }: Props) {
     const [applicants, setApplicants] = useState<Applicant[]>(
-        MockApplicants.filter(a => a.recruitmentId === recruitment.id)
+        MockApplicants.filter(a => a.recruitmentId === String(recruitment.ctvRecruitmentId))
     );
     const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
     const [filterStatus, setFilterStatus] = useState<ApplicationStatus | "ALL">("ALL");
@@ -52,8 +62,8 @@ export default function ApplicantList({ recruitment, onBack }: Props) {
                     <ArrowLeft size={20} />
                 </button>
                 <div className="flex flex-col gap-0.5">
-                    <h2 className="text-lg font-bold text-gray-800">Đơn ứng tuyển — {recruitment.role}</h2>
-                    <p className="text-sm text-gray-500">{recruitment.eventTitle}</p>
+                    <h2 className="text-lg font-bold text-gray-800">Đơn ứng tuyển — {recruitment.roleName}</h2>
+                    <p className="text-sm text-gray-500">{recruitment.title}</p>
                 </div>
             </div>
 

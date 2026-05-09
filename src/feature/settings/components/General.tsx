@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { LogOut } from 'lucide-react';
+import { logout } from '../../../services/authService';
 
 const General: React.FC = () => {
     return (
@@ -47,9 +49,15 @@ const General: React.FC = () => {
                 </div>
             </div>
 
-            <div className="pt-4">
-                <button className="bg-[#0092B8] text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-900/10 hover:shadow-blue-900/20 hover:-translate-y-0.5 transition-all active:translate-y-0">
+            <div className="pt-4 flex items-center justify-end gap-4">
+                <button className="bg-[#0092B8] hover:bg-[#007A99] text-white px-8 py-4 rounded-md font-bold text-xs uppercase tracking-widest transition-colors">
                     Lưu thay đổi
+                </button>
+                <button 
+                    onClick={() => logout()}
+                    className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-8 py-4 rounded-md font-bold text-xs uppercase tracking-widest transition-colors"
+                >
+                    <LogOut size={16} /> Đăng xuất
                 </button>
             </div>
         </div>

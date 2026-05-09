@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { ArrowLeft, MessageSquare, BarChart2, List, Plus, Trash2, Star, X } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
     FeedbackQuestion, Feedback, QuestionType,
     MockFeedbackQuestions, MockFeedbacks, getFeedbackStats
 } from "../data/FeedbackMockData";
+import { FeedbackApi } from "../../../../services/events-management/FeedbackApi";
 import FeedbackQuestionForm from "./FeedbackQuestionForm";
 
 interface Props {
@@ -30,24 +32,67 @@ const StarRating = ({ value }: { value: number }) => (
 );
 
 export default function FeedbackPanel({ event, onBack }: Props) {
+    const queryClient = useQueryClient();
+    const eventIdStr = event.eventId || event.id;
+
+    // Fetch questions
+    const { data: questionsData, isLoading: isLoadingQuestions } = useQuery({
+        queryKey: ["feedbackQuestions", eventIdStr],
+        queryFn: async () => {
+            const res = await FeedbackApi.getAllQuestionByEventId(eventIdStr);
+            if (res.statusCode === 200) {
+                return res.object?.content || res.object || [];
+            }
+            return [];
+        }
+    });
+
+    // Fetch feedbacks
+    const { data: feedbacksData, isLoading: isLoadingFeedbacks } = useQuery({
+        queryKey: ["feedbacks", eventIdStr],
+        queryFn: async () => {
+            const res = await FeedbackApi.getAllFeedbackByEventId(eventIdStr);
+            if (res.statusCode === 200) {
+                return res.object?.content || res.object || [];
+            }
+            return [];
+        }
+    });
+
+    const questions: FeedbackQuestion[] = questionsData || [];
+    const feedbacks: Feedback[] = feedbacksData || [];
+    const isLoading = isLoadingQuestions || isLoadingFeedbacks;
+
     const [activeTab, setActiveTab] = useState<FeedbackTab>("questions");
-    const [questions, setQuestions] = useState<FeedbackQuestion[]>(
-        MockFeedbackQuestions.filter(q => q.eventId === event.id)
-    );
-    const [feedbacks] = useState<Feedback[]>(
-        MockFeedbacks.filter(f => f.eventId === event.id)
-    );
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
 
-    const stats = getFeedbackStats(event.id, questions, feedbacks);
+    const stats = getFeedbackStats(eventIdStr, questions, feedbacks);
 
-    const handleAddQuestion = (q: FeedbackQuestion) => {
-        setQuestions(prev => [...prev, q]);
+    const handleAddQuestion = async (q: FeedbackQuestion) => {
+        try {
+            // Map FeedbackQuestion to QuestionData expected by API
+            const payload = {
+                eventId: event.eventId || event.id,
+                questionContent: q.content,
+                questionType: q.type,
+                options: q.options?.map((o: string) => ({ optionValue: o })) || [],
+                isRequired: q.required
+            };
+            const res = await FeedbackApi.createQuestion(payload);
+            if (res.statusCode === 200 || res.statusCode === 201) {
+                queryClient.invalidateQueries({ queryKey: ["feedbackQuestions", eventIdStr] });
+            }
+        } catch (error) {
+            console.error("Error creating question", error);
+        }
     };
 
     const handleDeleteQuestion = (id: string) => {
-        setQuestions(prev => prev.filter(q => q.id !== id));
+        // Implement delete API call if available, else just optimistic local state update
+        queryClient.setQueryData(["feedbackQuestions", eventIdStr], (old: any) => 
+            Array.isArray(old) ? old.filter((q: any) => q.id !== id) : old
+        );
     };
 
     const tabs: { id: FeedbackTab; label: string; icon: React.ReactNode; count?: number }[] = [
@@ -123,8 +168,8 @@ export default function FeedbackPanel({ event, onBack }: Props) {
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${TYPE_BADGE[q.type].cls}`}>
-                                                    {TYPE_BADGE[q.type].label}
+                                                <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${TYPE_BADGE[q.type as QuestionType]?.cls || ''}`}>
+                                                    {TYPE_BADGE[q.type as QuestionType]?.label || q.type}
                                                 </span>
                                                 {q.options && (
                                                     <span className="text-xs text-gray-400">{q.options.join(" · ")}</span>
@@ -173,7 +218,7 @@ export default function FeedbackPanel({ event, onBack }: Props) {
 
                                     <div className="flex flex-col gap-4">
                                         <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Chi tiết câu trả lời</h3>
-                                        {selectedFeedback.answers.map((ans, i) => (
+                                        {selectedFeedback.answers.map((ans: any, i: number) => (
                                             <div key={i} className="flex flex-col gap-2">
                                                 <p className="text-sm font-semibold text-gray-700">{i + 1}. {ans.questionContent}</p>
                                                 {ans.type === "RATING" && ans.ratingValue !== undefined && (
@@ -187,7 +232,7 @@ export default function FeedbackPanel({ event, onBack }: Props) {
                                                 )}
                                                 {(ans.type === "SINGLECHOICE" || ans.type === "MULTIPLECHOICE") && (
                                                     <div className="flex flex-wrap gap-2">
-                                                        {ans.choiceValues?.map(cv => (
+                                                        {ans.choiceValues?.map((cv: string) => (
                                                             <span key={cv} className="px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-bold rounded-lg border border-blue-100">{cv}</span>
                                                         ))}
                                                     </div>
@@ -273,12 +318,13 @@ export default function FeedbackPanel({ event, onBack }: Props) {
                         </div>
 
                         {/* Choice question stats */}
-                        {stats.questionStats.map((qs, i) => {
-                            const maxVal = Math.max(...Object.values(qs.choiceCounts), 1);
+                        {stats.questionStats.map((qs: any, i: number) => {
+                            const choiceCounts = qs.choiceCounts as Record<string, number>;
+                            const maxVal = Math.max(...Object.values(choiceCounts), 1);
                             return (
                                 <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4">
                                     <h3 className="text-sm font-bold text-gray-700">{qs.question}</h3>
-                                    {Object.entries(qs.choiceCounts).map(([opt, cnt]) => (
+                                    {Object.entries(choiceCounts).map(([opt, cnt]) => (
                                         <div key={opt} className="flex items-center gap-3">
                                             <span className="text-xs text-gray-600 font-medium w-28 shrink-0 truncate" title={opt}>{opt}</span>
                                             <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">

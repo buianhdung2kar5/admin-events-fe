@@ -96,7 +96,7 @@ export default function ListUser({ filter }: ListUserProps) {
         const targets = suspendTargetId ? [suspendTargetId] : selectedIds;
         setIsActioning(true);
         try {
-            const res = await SystemManagementApi.buldSuspend({
+            const res = await SystemManagementApi.bulkAction({
                 entityType: "USER",
                 action: suspendAction,
                 entityIds: targets

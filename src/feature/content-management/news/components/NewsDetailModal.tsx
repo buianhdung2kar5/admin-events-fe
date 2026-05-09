@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Tag, Calendar, User, Coins } from 'lucide-react';
+import { X, Tag, Calendar, User, Coins, Eye } from 'lucide-react';
 import { NewsItem } from '../data/NewsMockData';
 
 interface NewsDetailModalProps {
@@ -39,21 +39,18 @@ export default function NewsDetailModal({ news, onClose }: NewsDetailModalProps)
                         {/* Meta info */}
                         <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400">
                             <div className="flex items-center gap-1.5">
-                                <User size={12} />
-                                <span>{news.author}</span>
+                                <Calendar size={12} />
+                                <span>{new Date(news.createdTime).toLocaleDateString('vi-VN')}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
-                                <Calendar size={12} />
-                                <span>{news.date}</span>
+                                <Eye size={12} />
+                                <span>{news.viewCount.toLocaleString()} lượt xem</span>
                             </div>
                             {news.totalRewardCoin > 0 && (
                                 <div className="flex items-center gap-1.5 text-amber-500 font-semibold">
                                     <Coins size={12} />
                                     <span>{news.totalRewardCoin.toLocaleString()} xu</span>
                                 </div>
-                            )}
-                            {news.isFeatured && (
-                                <span className="text-red-500 font-semibold">📌 Nổi bật</span>
                             )}
                         </div>
 

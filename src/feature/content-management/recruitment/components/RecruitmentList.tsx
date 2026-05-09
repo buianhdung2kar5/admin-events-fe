@@ -1,77 +1,100 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Eye, Users, Search, X, Plus, Trash2 } from "lucide-react";
-import { MockRecruitments, Recruitment, RecruitmentStatus } from "../data/RecruitmentMockData";
+import {
+    ChevronLeft, ChevronRight, Eye, Users, Search, X, Trash2,
+    Calendar, MapPin, DollarSign, Award, Star, Filter
+} from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { RecruitmentApi } from "../../../../services/events-management/Recruitments";
+import { RecruitmentItem } from "../data/RecruitmentMockData";
 import RecruitmentDetailPanel from "./RecruitmentDetailPanel";
-import ApplicantList from "./ApplicantList";
+import Toast from "../../../../components/common/Toast";
 
 export default function RecruitmentList() {
-    const [recruitments, setRecruitments] = useState<Recruitment[]>(MockRecruitments);
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const queryClient = useQueryClient();
+
+    const [currentPage, setCurrentPage] = useState(0);
+    const pageSize = 8;
+
     const [search, setSearch] = useState("");
-    const [filterStatus, setFilterStatus] = useState<RecruitmentStatus | "ALL">("ALL");
-    const [detailItem, setDetailItem] = useState<Recruitment | null>(null);
-    const [applicantView, setApplicantView] = useState<Recruitment | null>(null);
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 6;
+    const [filterStatus, setFilterStatus] = useState<"ALL" | "OPEN" | "CLOSED">("ALL");
+    const [detailId, setDetailId] = useState<number | null>(null);
+    const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
-    // If viewing applicants for a recruitment, show that view instead
-    if (applicantView) {
-        return <ApplicantList recruitment={applicantView} onBack={() => setApplicantView(null)} />;
-    }
+    const showToast = (msg: string, ok: boolean) => {
+        setToast({ msg, ok });
+        setTimeout(() => setToast(null), 3000);
+    };
 
-    const filtered = recruitments.filter(r => {
-        const matchStatus = filterStatus === "ALL" || r.status === filterStatus;
-        const matchSearch = r.eventTitle.toLowerCase().includes(search.toLowerCase()) ||
-            r.role.toLowerCase().includes(search.toLowerCase());
-        return matchStatus && matchSearch;
+    // Fetch danh sách
+    const { data: response, isLoading, isError } = useQuery({
+        queryKey: ["recruitments", currentPage, pageSize],
+        queryFn: () => RecruitmentApi.getAllRecruitment(currentPage, pageSize, ["createdTime,desc"]),
     });
 
-    const totalPages = Math.ceil(filtered.length / itemsPerPage);
-    const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const allItems: RecruitmentItem[] = response?.object?.content || [];
+    const totalPages: number = response?.object?.totalPages || 0;
+    const totalElements: number = response?.object?.totalElements || 0;
 
-    const toggleSelect = (id: string) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-    const toggleSelectAll = () => {
-        if (selectedIds.length === paginated.length && paginated.length > 0) setSelectedIds([]);
-        else setSelectedIds(paginated.map(r => r.id));
+    // Filter phía client theo search + status
+    const filtered = allItems.filter(r => {
+        const matchSearch =
+            r.title.toLowerCase().includes(search.toLowerCase()) ||
+            r.roleName.toLowerCase().includes(search.toLowerCase());
+        const matchStatus =
+            filterStatus === "ALL" ||
+            (filterStatus === "OPEN" && r.isOpen) ||
+            (filterStatus === "CLOSED" && !r.isOpen);
+        return matchSearch && matchStatus;
+    });
+
+    // Xóa một recruitment
+    const handleDelete = async (id: number) => {
+        try {
+            await RecruitmentApi.deleteRecruitment(String(id));
+            showToast("Đã xóa đợt tuyển dụng thành công", true);
+            queryClient.invalidateQueries({ queryKey: ["recruitments"] });
+        } catch {
+            showToast("Xóa thất bại. Vui lòng thử lại.", false);
+        }
     };
 
-    const handleStatusChange = (id: string, status: RecruitmentStatus) => {
-        setRecruitments(prev => prev.map(r => r.id === id ? { ...r, status } : r));
-        if (detailItem?.id === id) setDetailItem(prev => prev ? { ...prev, status } : null);
+    // Chuyển trạng thái open/close
+    const handleToggleStatus = async (id: number) => {
+        try {
+            await RecruitmentApi.patchRecruitment(String(id));
+            showToast("Đã cập nhật trạng thái thành công", true);
+            queryClient.invalidateQueries({ queryKey: ["recruitments"] });
+            setDetailId(null);
+        } catch {
+            showToast("Cập nhật trạng thái thất bại", false);
+        }
     };
 
-    const handleBulkDelete = () => {
-        setRecruitments(prev => prev.filter(r => !selectedIds.includes(r.id)));
-        setSelectedIds([]);
-    };
+    const statusStyle = (isOpen: boolean) =>
+        isOpen
+            ? "bg-green-50 text-green-600 border-green-200"
+            : "bg-gray-100 text-gray-500 border-gray-200";
 
-    const statusStyle = (s: RecruitmentStatus) => s === "OPEN"
-        ? "bg-green-50 text-green-600 border-green-200"
-        : "bg-gray-100 text-gray-500 border-gray-200";
+    const formatCurrency = (amount: number) =>
+        amount > 0 ? amount.toLocaleString("vi-VN") + "đ" : "Không có";
+
+    const formatDate = (date: string) =>
+        new Date(date).toLocaleDateString("vi-VN");
 
     return (
         <div className="flex flex-col gap-6">
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-3">
-                    {selectedIds.length > 0 ? (
-                        <div className="flex items-center gap-3">
-                            <span className="text-sm font-semibold text-[#0092B8] bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100">Đã chọn {selectedIds.length}</span>
-                            <button onClick={handleBulkDelete} className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl border border-red-100 transition-colors">
-                                <Trash2 size={14} /> Xóa hàng loạt
-                            </button>
-                            <button onClick={() => setSelectedIds([])} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"><X size={16} /></button>
-                        </div>
-                    ) : (
-                        <h2 className="text-lg font-bold text-gray-800">Danh sách đợt tuyển CTV</h2>
-                    )}
-                </div>
+                <h2 className="text-lg font-bold text-gray-800">Danh sách đợt tuyển CTV</h2>
                 <div className="flex items-center gap-3 flex-wrap">
                     {/* Status Filter */}
                     <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl p-1">
                         {(["ALL", "OPEN", "CLOSED"] as const).map(s => (
-                            <button key={s} onClick={() => { setFilterStatus(s); setCurrentPage(1); }}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filterStatus === s ? "bg-[#0092B8] text-white shadow-sm" : "text-gray-500 hover:text-gray-800"}`}>
+                            <button
+                                key={s}
+                                onClick={() => { setFilterStatus(s); setCurrentPage(0); }}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filterStatus === s ? "bg-[#0092B8] text-white shadow-sm" : "text-gray-500 hover:text-gray-800"}`}
+                            >
                                 {s === "ALL" ? "Tất cả" : s === "OPEN" ? "Đang mở" : "Đã đóng"}
                             </button>
                         ))}
@@ -79,109 +102,230 @@ export default function RecruitmentList() {
                     {/* Search */}
                     <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 focus-within:border-[#0092B8] transition-all">
                         <Search size={15} className="text-gray-400" />
-                        <input type="text" value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Tìm đợt tuyển..." className="text-sm outline-none bg-transparent w-40 placeholder:text-gray-400" />
-                        {search && <button onClick={() => setSearch("")}><X size={14} className="text-gray-400" /></button>}
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => { setSearch(e.target.value); setCurrentPage(0); }}
+                            placeholder="Tìm đợt tuyển..."
+                            className="text-sm outline-none bg-transparent w-40 placeholder:text-gray-400"
+                        />
+                        {search && (
+                            <button onClick={() => setSearch("")}>
+                                <X size={14} className="text-gray-400" />
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-500 uppercase bg-gray-50/50 border-b border-gray-100 font-semibold tracking-wider">
-                            <tr>
-                                <th className="p-5 w-12">
-                                    <div className="flex justify-center">
-                                        <input type="checkbox" className="w-4 h-4 rounded-md border-gray-300 cursor-pointer"
-                                            checked={selectedIds.length === paginated.length && paginated.length > 0} onChange={toggleSelectAll} />
-                                    </div>
-                                </th>
-                                <th className="px-5 py-4">Sự kiện / Vai trò</th>
-                                <th className="px-5 py-4 text-center">Chỉ tiêu</th>
-                                <th className="px-5 py-4 text-center">Đơn nộp</th>
-                                <th className="px-5 py-4 text-center">Đã duyệt</th>
-                                <th className="px-5 py-4 text-center">Trạng thái</th>
-                                <th className="px-5 py-4 text-right">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {paginated.length === 0 ? (
-                                <tr><td colSpan={7} className="py-16 text-center text-sm text-gray-400 font-medium">Không tìm thấy đợt tuyển dụng nào</td></tr>
-                            ) : paginated.map(r => (
-                                <tr key={r.id} className={`hover:bg-blue-50/20 transition-colors ${selectedIds.includes(r.id) ? "bg-blue-50/40" : ""}`}>
-                                    <td className="p-5">
-                                        <div className="flex justify-center">
-                                            <input type="checkbox" className="w-4 h-4 rounded-md border-gray-300 cursor-pointer"
-                                                checked={selectedIds.includes(r.id)} onChange={() => toggleSelect(r.id)} />
-                                        </div>
-                                    </td>
-                                    <td className="px-5 py-4">
-                                        <div className="flex items-center gap-4">
-                                            <img src={r.bannerUrl} alt="" className="w-20 h-12 object-cover rounded-xl shadow-sm" />
-                                            <div className="flex flex-col gap-1 max-w-[250px]">
-                                                <span className="font-bold text-gray-800 truncate" title={r.eventTitle}>{r.eventTitle}</span>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-[#0092B8] font-semibold bg-blue-50 px-2 py-0.5 rounded-lg w-fit">{r.role}</span>
-                                                    <span className="text-xs text-gray-400">{new Date(r.createdAt).toLocaleDateString("vi-VN")}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-5 py-4 text-center">
-                                        <span className="font-bold text-gray-700">{r.quantity}</span>
-                                    </td>
-                                    <td className="px-5 py-4 text-center">
-                                        <button onClick={() => setApplicantView(r)} className="inline-flex items-center gap-1.5 font-bold text-[#0092B8] hover:underline">
-                                            <Users size={14} /> {r.appliedCount}
-                                        </button>
-                                    </td>
-                                    <td className="px-5 py-4 text-center">
-                                        <div className="flex flex-col items-center gap-1">
-                                            <span className="font-bold text-green-600">{r.approvedCount}</span>
-                                            <div className="w-16 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                                <div className="h-full bg-green-500 rounded-full" style={{ width: `${Math.min((r.approvedCount / Math.max(r.quantity, 1)) * 100, 100)}%` }} />
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-5 py-4 text-center">
-                                        <span className={`inline-flex px-3 py-1.5 rounded-xl border text-[11px] font-bold uppercase tracking-wide ${statusStyle(r.status)}`}>
-                                            {r.status === "OPEN" ? "Đang mở" : "Đã đóng"}
-                                        </span>
-                                    </td>
-                                    <td className="px-5 py-4 text-right">
-                                        <button onClick={() => setDetailItem(r)} className="p-2 text-gray-400 hover:text-[#0092B8] hover:bg-blue-50 rounded-xl transition-all" title="Chi tiết">
-                                            <Eye size={16} />
-                                        </button>
-                                    </td>
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden relative">
+                {/* Loading overlay */}
+                {isLoading && (
+                    <div className="absolute inset-0 z-10 bg-white/60 backdrop-blur-[1px] flex items-center justify-center rounded-3xl">
+                        <div className="w-8 h-8 border-4 border-blue-100 border-t-[#0092B8] rounded-full animate-spin" />
+                    </div>
+                )}
+
+                {/* Error state */}
+                {isError && !isLoading && (
+                    <div className="py-16 text-center text-sm text-red-400 font-medium">
+                        Không thể tải dữ liệu. Vui lòng thử lại.
+                    </div>
+                )}
+
+                {!isError && (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="text-xs text-gray-500 uppercase bg-gray-50/50 border-b border-gray-100 font-semibold tracking-wider">
+                                <tr>
+                                    <th className="px-5 py-4">Đợt tuyển / Vai trò</th>
+                                    <th className="px-5 py-4 text-center">Thời gian</th>
+                                    <th className="px-5 py-4 text-center">Chỉ tiêu</th>
+                                    <th className="px-5 py-4 text-center">Đơn nộp</th>
+                                    <th className="px-5 py-4 text-center">Quyền lợi</th>
+                                    <th className="px-5 py-4 text-center">Trạng thái</th>
+                                    <th className="px-5 py-4 text-right">Thao tác</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {filtered.length === 0 && !isLoading ? (
+                                    <tr>
+                                        <td colSpan={7} className="py-16 text-center text-sm text-gray-400 font-medium">
+                                            Không tìm thấy đợt tuyển dụng nào
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filtered.map(r => (
+                                        <tr key={r.ctvRecruitmentId} className="hover:bg-blue-50/20 transition-colors">
+                                            {/* Title + Role */}
+                                            <td className="px-5 py-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-20 h-12 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-100">
+                                                        {r.banner ? (
+                                                            <img
+                                                                src={r.banner}
+                                                                alt=""
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => {
+                                                                    (e.target as HTMLImageElement).src = "https://placehold.co/80x48?text=No+Image";
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                                                <Users size={20} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-col gap-1 max-w-[260px]">
+                                                        <span className="font-bold text-gray-800 truncate text-sm" title={r.title}>
+                                                            {r.title}
+                                                        </span>
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="text-xs text-[#0092B8] font-semibold bg-blue-50 px-2 py-0.5 rounded-lg">
+                                                                {r.roleName}
+                                                            </span>
+                                                            {r.categories.slice(0, 1).map(cat => (
+                                                                <span key={cat.categoryId} className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg">
+                                                                    {cat.options[0]?.value}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            {/* Thời gian */}
+                                            <td className="px-5 py-4 text-center">
+                                                <div className="flex flex-col items-center gap-0.5">
+                                                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                                                        <Calendar size={11} className="text-gray-400" />
+                                                        <span>{formatDate(r.startTime)}</span>
+                                                    </div>
+                                                    <span className="text-[10px] text-gray-400">Ngày tuyển</span>
+                                                </div>
+                                            </td>
+
+                                            {/* Chỉ tiêu */}
+                                            <td className="px-5 py-4 text-center">
+                                                <span className="font-bold text-gray-700">{r.quantity}</span>
+                                            </td>
+
+                                            {/* Đơn nộp */}
+                                            <td className="px-5 py-4 text-center">
+                                                <div className="flex flex-col items-center gap-0.5">
+                                                    <span className="font-bold text-[#0092B8]">{r.appliedCount}</span>
+                                                    <div className="w-12 bg-gray-100 rounded-full h-1 overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-[#0092B8] rounded-full"
+                                                            style={{ width: `${Math.min((r.appliedCount / Math.max(r.quantity, 1)) * 100, 100)}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            {/* Quyền lợi */}
+                                            <td className="px-5 py-4 text-center">
+                                                <div className="flex flex-col items-center gap-0.5">
+                                                    {r.cashRewardAmount > 0 && (
+                                                        <span className="text-xs font-bold text-amber-600 flex items-center gap-0.5">
+                                                            <DollarSign size={10} />
+                                                            {formatCurrency(r.cashRewardAmount)}
+                                                        </span>
+                                                    )}
+                                                    {r.youthUnionPoint > 0 && (
+                                                        <span className="text-xs text-purple-500 font-semibold flex items-center gap-0.5">
+                                                            <Star size={10} />
+                                                            {r.youthUnionPoint} điểm RĐ
+                                                        </span>
+                                                    )}
+                                                    {r.cashRewardAmount === 0 && r.youthUnionPoint === 0 && (
+                                                        <span className="text-xs text-gray-400">—</span>
+                                                    )}
+                                                </div>
+                                            </td>
+
+                                            {/* Trạng thái */}
+                                            <td className="px-5 py-4 text-center">
+                                                <span className={`inline-flex px-3 py-1.5 rounded-xl border text-[11px] font-bold uppercase tracking-wide ${statusStyle(r.isOpen)}`}>
+                                                    {r.isOpen ? "Đang mở" : "Đã đóng"}
+                                                </span>
+                                            </td>
+
+                                            {/* Thao tác */}
+                                            <td className="px-5 py-4 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button
+                                                        onClick={() => setDetailId(r.ctvRecruitmentId)}
+                                                        className="p-2 text-gray-400 hover:text-[#0092B8] hover:bg-blue-50 rounded-xl transition-all"
+                                                        title="Chi tiết"
+                                                    >
+                                                        <Eye size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(r.ctvRecruitmentId)}
+                                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                        title="Xóa"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
-                    <span className="text-sm text-gray-500 font-medium">
-                        Hiển thị <span className="font-bold text-gray-800">{paginated.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</span>–<span className="font-bold text-gray-800">{Math.min(currentPage * itemsPerPage, filtered.length)}</span> / <span className="font-bold text-gray-800">{filtered.length}</span>
-                    </span>
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 rounded-xl hover:bg-gray-100 disabled:opacity-50 transition-colors text-gray-600"><ChevronLeft size={18} /></button>
-                        {Array.from({ length: totalPages }).map((_, i) => (
-                            <button key={i} onClick={() => setCurrentPage(i + 1)} className={`w-8 h-8 rounded-xl text-sm font-bold transition-all ${currentPage === i + 1 ? "bg-[#0092B8] text-white shadow-md" : "text-gray-600 hover:bg-gray-100"}`}>{i + 1}</button>
-                        ))}
-                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages || totalPages === 0} className="p-2 rounded-xl hover:bg-gray-100 disabled:opacity-50 transition-colors text-gray-600"><ChevronRight size={18} /></button>
+                {totalPages > 0 && (
+                    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+                        <span className="text-sm text-gray-500 font-medium">
+                            Tổng <span className="font-bold text-gray-800">{totalElements}</span> đợt tuyển
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                                disabled={currentPage === 0}
+                                className="p-2 rounded-xl hover:bg-gray-100 disabled:opacity-50 transition-colors text-gray-600"
+                            >
+                                <ChevronLeft size={18} />
+                            </button>
+                            {Array.from({ length: totalPages }).map((_, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => setCurrentPage(i)}
+                                    className={`w-8 h-8 rounded-xl text-sm font-bold transition-all ${currentPage === i ? "bg-[#0092B8] text-white shadow-md" : "text-gray-600 hover:bg-gray-100"}`}
+                                >
+                                    {i + 1}
+                                </button>
+                            ))}
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                                disabled={currentPage >= totalPages - 1}
+                                className="p-2 rounded-xl hover:bg-gray-100 disabled:opacity-50 transition-colors text-gray-600"
+                            >
+                                <ChevronRight size={18} />
+                            </button>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Detail Panel */}
-            {detailItem && (
+            {detailId !== null && (
                 <RecruitmentDetailPanel
-                    recruitment={detailItem}
-                    onClose={() => setDetailItem(null)}
-                    onStatusChange={handleStatusChange}
+                    recruitmentId={detailId}
+                    onClose={() => setDetailId(null)}
+                    onToggleStatus={handleToggleStatus}
                 />
+            )}
+
+            {/* Toast */}
+            {toast && (
+                <Toast toast={{ msg: toast.msg, ok: toast.ok }} onClose={() => setToast(null)} />
             )}
         </div>
     );

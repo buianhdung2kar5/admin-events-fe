@@ -104,16 +104,10 @@ export default function TableData<T>({
                 </table>
             </div>
 
-            <div className="p-6 border-t border-gray-50 bg-gray-50/10">
-                <div className="flex items-center justify-between text-xs text-gray-400 font-medium">
-                    <span>Hiển thị <span className="text-gray-700 font-bold">{data.length}</span> bản ghi</span>
-                    <div className="flex items-center gap-2">
-                        <button className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-white transition-colors disabled:opacity-50" disabled>Trước</button>
-                        <button className="px-3 py-1.5 bg-white border border-blue-200 text-blue-600 rounded-lg font-bold shadow-sm">1</button>
-                        <button className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-white transition-colors">2</button>
-                        <button className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-white transition-colors">Sau</button>
-                    </div>
-                </div>
+            <div className="px-6 py-4 border-t border-gray-50">
+                <span className="text-xs text-gray-400 font-medium">
+                    Hiển thị <span className="text-gray-700 font-semibold">{data.length}</span> bản ghi
+                </span>
             </div>
         </div>
     );

@@ -2,18 +2,18 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Trash2, Eye, Calendar, MapPin, Users, Lock, Unlock, X, MessageSquare, ClipboardList } from "lucide-react";
 import { getEventStatusStyles } from "../data/EventMockData";
-import FeedbackPanel from "./FeedbackPanel";
+import Toast from "../../../../components/common/Toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { EventsApi } from "../../../../services/events-management/EventsApi";
-
+import { SystemManagementApi } from "../../../../services/system-management/SystemManagementApi";
 export default function EventList() {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const navigate = useNavigate();
     
-    const [feedbackEvent, setFeedbackEvent] = useState<any | null>(null);
-    const [isLockModalOpen, setIsLockModalOpen] = useState(false);
-    const [lockTargetId, setLockTargetId] = useState<string | null>(null);
-    const [lockReason, setLockReason] = useState("");
+    const [targetEvent, setTargetEvent] = useState<any | null>(null);
+    const [isLocking, setIsLocking] = useState(false);
+    const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+    const queryClient = useQueryClient();
 
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 6;
@@ -58,32 +58,47 @@ export default function EventList() {
         navigate(`/content-management/attendance?eventId=${eventId}`);
     };
 
+    const handleFeedback = (eventId: string) => {
+        navigate(`/content-management/feedback?eventId=${eventId}`);
+    };
+
     const handleLockToggle = (event: any) => {
-        if (event.status !== "LOCKED") {
-            setLockTargetId(event.eventId.toString());
-            setLockReason("");
-            setIsLockModalOpen(true);
-        } else {
-            // TODO: Call Unlock API
-            console.log("Unlock event", event.eventId);
+        setTargetEvent(event);
+    };
+
+    const confirmLockToggle = async () => {
+        if (!targetEvent) return;
+        setIsLocking(true);
+        try{
+            await SystemManagementApi.bulkAction({
+                entityType: "EVENT",
+                action: targetEvent.status === "LOCKED" ? "UNSUSPEND" : "SUSPEND",
+                entityIds: [targetEvent.eventId.toString()]
+            });
+            await queryClient.invalidateQueries({ queryKey: ["events"] });
+            setToast({
+                msg: targetEvent.status === "LOCKED" ? "Đã mở khóa sự kiện thành công!" : "Đã khóa sự kiện thành công!",
+                ok: true
+            });
+            setTimeout(() => setToast(null), 3000);
+            setTargetEvent(null);
+        }catch(error: any){
+            console.error("Lock/Unlock event error", error);
+            setToast({
+                msg: error.message || "Có lỗi xảy ra, vui lòng thử lại!",
+                ok: false
+            });
+            setTimeout(() => setToast(null), 3000);
+        } finally {
+            setIsLocking(false);
         }
     };
 
-    const confirmLockEvent = () => {
-        if (!lockTargetId || !lockReason.trim()) return;
-
-        // TODO: call POST /admin/bulk-suspend
-        console.log("Lock event", lockTargetId, lockReason);
-        setIsLockModalOpen(false);
-        setLockTargetId(null);
-    };
-
-    if (feedbackEvent) {
-        return <FeedbackPanel event={feedbackEvent} onBack={() => setFeedbackEvent(null)} />;
-    }
-
     return (
         <div className="flex flex-col gap-6">
+            {/* Toast Notification */}
+            <Toast toast={toast} onClose={() => setToast(null)} />
+
             {/* Header Actions */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -224,7 +239,7 @@ export default function EventList() {
                                                 >
                                                     {event.status === "LOCKED" ? <Unlock size={16} /> : <Lock size={16} />}
                                                 </button>
-                                                <button onClick={() => setFeedbackEvent(event)} className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all" title="Khảo sát / Phản hồi">
+                                                <button onClick={() => handleFeedback(event.eventId.toString())} className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all" title="Khảo sát / Phản hồi">
                                                     <MessageSquare size={16} />
                                                 </button>
                                                 <button onClick={() => handleAttendance(event.eventId.toString())} className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all" title="Điểm danh">
@@ -281,40 +296,43 @@ export default function EventList() {
             </div>
 
 
-            {/* Lock Event Modal */}
-            {isLockModalOpen && (
+            {/* Lock/Unlock Event Modal */}
+            {targetEvent && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsLockModalOpen(false)} />
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setTargetEvent(null)} />
                     <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden animate-[zoomIn_0.2s_ease]">
-                        <div className="flex flex-col gap-4 bg-amber-50 p-6">
-                            <h4 className="font-bold text-amber-600 text-lg flex items-center gap-2">
-                                <Lock size={20} /> Xác nhận khóa sự kiện
+                        <div className={`flex flex-col gap-4 p-6 ${targetEvent.status === "LOCKED" ? "bg-teal-50" : "bg-amber-50"}`}>
+                            <h4 className={`font-bold text-lg flex items-center gap-2 ${targetEvent.status === "LOCKED" ? "text-teal-600" : "text-amber-600"}`}>
+                                {targetEvent.status === "LOCKED" ? <Unlock size={20} /> : <Lock size={20} />} 
+                                Xác nhận {targetEvent.status === "LOCKED" ? "mở khóa" : "khóa"} sự kiện
                             </h4>
-                            <p className="text-sm text-amber-600/80">
-                                Sự kiện này sẽ bị khóa. Người dùng sẽ không thể đăng ký mới hoặc điểm danh. Những người đã đăng ký vẫn giữ nguyên trạng thái.
+                            <p className={`text-sm ${targetEvent.status === "LOCKED" ? "text-teal-600/80" : "text-amber-600/80"}`}>
+                                {targetEvent.status === "LOCKED" 
+                                    ? "Sự kiện này sẽ được mở khóa. Người dùng có thể đăng ký và điểm danh trở lại." 
+                                    : "Sự kiện này sẽ bị khóa. Người dùng sẽ không thể đăng ký mới hoặc điểm danh. Những người đã đăng ký vẫn giữ nguyên trạng thái."}
                             </p>
                         </div>
                         <div className="p-6 flex flex-col gap-5">
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold text-gray-500 uppercase">Lý do khóa <span className="text-red-500">*</span></label>
-                                <textarea rows={3} value={lockReason} onChange={e => setLockReason(e.target.value)} placeholder="Nhập lý do khóa sự kiện (vd: Chứa nội dung không phù hợp)..." className="border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-amber-500 resize-none" />
-                            </div>
-
                             <div className="flex items-center gap-3 mt-4">
-                                <button onClick={() => setIsLockModalOpen(false)} className="flex-1 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+                                <button onClick={() => setTargetEvent(null)} disabled={isLocking} className="flex-1 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors disabled:opacity-50">
                                     Hủy
                                 </button>
                                 <button 
-                                    onClick={confirmLockEvent} 
-                                    disabled={!lockReason.trim()}
-                                    className="flex-1 py-3 text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                                    Xác nhận Khóa
+                                    onClick={confirmLockToggle} 
+                                    disabled={isLocking}
+                                    className={`flex-1 py-3 text-sm font-bold text-white rounded-xl transition-colors flex items-center justify-center gap-2 ${targetEvent.status === "LOCKED" ? "bg-teal-500 hover:bg-teal-600" : "bg-amber-500 hover:bg-amber-600"} disabled:opacity-50`}>
+                                    {isLocking ? (
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <>Xác nhận {targetEvent.status === "LOCKED" ? "Mở khóa" : "Khóa"}</>
+                                    )}
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
+
         </div>
     );
 }

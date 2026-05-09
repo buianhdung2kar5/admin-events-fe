@@ -1,40 +1,79 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Edit3, Trash2, Clock, Plus, X, Eye } from "lucide-react";
-import { MockFeatured, FeaturedItem } from "../data/FeaturedMockData";
+import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { FeaturedEventData } from "../data/FeaturedMockData";
 import FeaturedFormModal from "./FeaturedFormModal";
-import FeaturedDetailModal from "./FeaturedDetailModal";
+import Toast from "../../../../components/common/Toast";
+import { FeaturedApi } from "../../../../services/events-management/FeaturedEventsApi";
 
 export default function FeaturedList() {
-    const [featured, setFeatured] = useState<FeaturedItem[]>(MockFeatured);
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
     
-    // UI State
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [selectedFeatured, setSelectedFeatured] = useState<FeaturedItem | null>(null);
+    const [selectedFeatured, setSelectedFeatured] = useState<FeaturedEventData | null>(null);
     const [formMode, setFormMode] = useState<"create" | "edit">("create");
-    const [isDetailOpen, setIsDetailOpen] = useState(false);
-    const [selectedDetailItem, setSelectedDetailItem] = useState<FeaturedItem | null>(null);
+    const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
-    // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 6;
-    const sortedFeatured = [...featured].sort((a, b) => a.priority - b.priority);
-    const totalPages = Math.ceil(sortedFeatured.length / itemsPerPage);
-    const paginatedItems = sortedFeatured.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    const { data: eventData, isLoading, isError } = useQuery({
+        queryKey: ["featuredEvents", currentPage],
+        queryFn: async () => {
+            const response = await FeaturedApi.getAllFeaturedEvents(currentPage - 1, itemsPerPage);
+            return response;
+        },
+    });
+
+    const paginatedItems: FeaturedEventData[] = eventData?.object?.content || [];
+    const totalPages = eventData?.object?.totalPages || 1;
+    const totalElements = eventData?.object?.totalElements || 0;
+
+    const getStatus = (startDate: string, endDate: string) => {
+        const now = new Date();
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        if (now < start) return "PENDING";
+        if (now > end) return "CLOSED";
+        return "ACTIVE";
+    };
+
+    const getStatusStyle = (status: string) => {
+        switch (status) {
+            case "PENDING": return "bg-blue-50 text-blue-600 border-blue-200";
+            case "ACTIVE": return "bg-green-50 text-green-600 border-green-200";
+            case "CLOSED": return "bg-gray-100 text-gray-500 border-gray-200";
+            default: return "bg-gray-50 text-gray-500";
+        }
+    };
+
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case "PENDING": return "Sắp tới";
+            case "ACTIVE": return "Đang ghim";
+            case "CLOSED": return "Hết hạn";
+            default: return status;
+        }
+    };
 
     const toggleSelectAll = () => {
         if (selectedIds.length === paginatedItems.length && paginatedItems.length > 0) {
             setSelectedIds([]);
         } else {
-            setSelectedIds(paginatedItems.map(item => item.id));
+            setSelectedIds(paginatedItems.map(item => item.featuredEventId));
         }
     };
 
-    const toggleSelect = (id: string) => {
+    const toggleSelect = (id: number) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
 
-    const handleEdit = (item: FeaturedItem) => {
+    const handleEdit = (item: FeaturedEventData) => {
         setSelectedFeatured(item);
         setFormMode("edit");
         setIsFormOpen(true);
@@ -46,47 +85,48 @@ export default function FeaturedList() {
         setIsFormOpen(true);
     };
 
-    const handleViewDetail = (item: FeaturedItem) => {
-        setSelectedDetailItem(item);
-        setIsDetailOpen(true);
+    const handleViewDetail = (item: FeaturedEventData) => {
+        navigate(`/content-management/events/${item.eventId}`);
     };
 
-    const resequenceOrder = (items: FeaturedItem[]) => {
-        return items
-            .sort((a, b) => a.priority - b.priority)
-            .map((item, index) => ({ ...item, priority: index + 1 }));
-    };
-
-    const handleDelete = (id: string) => {
-        setFeatured(prev => resequenceOrder(prev.filter(item => item.id !== id)));
-        setSelectedIds(prev => prev.filter(i => i !== id));
-    };
-
-    const handleBulkDelete = () => {
-        setFeatured(prev => resequenceOrder(prev.filter(item => !selectedIds.includes(item.id))));
-        setSelectedIds([]);
-    };
-
-    const getStatusStyle = (status: string) => {
-        switch (status) {
-            case "Displaying": return "bg-green-50 text-green-600 border-green-200";
-            case "Scheduled": return "bg-blue-50 text-blue-600 border-blue-200";
-            case "Expired": return "bg-gray-100 text-gray-500 border-gray-200";
-            default: return "bg-gray-50 text-gray-500";
+    const handleDelete = async (id: number) => {
+        if (!window.confirm("Bạn có chắc chắn muốn xóa sự kiện nổi bật này?")) return;
+        try {
+            const res = await FeaturedApi.deleteFeaturedEvent([id]);
+            if (res.statusCode === 200 || res.statusCode === 204) {
+                setToast({ msg: "Xóa sự kiện nổi bật thành công", ok: true });
+                queryClient.invalidateQueries({ queryKey: ["featuredEvents"] });
+                setSelectedIds(prev => prev.filter(i => i !== id));
+            } else {
+                setToast({ msg: res.message || "Xóa thất bại", ok: false });
+            }
+        } catch (error: any) {
+            setToast({ msg: error.message || "Có lỗi xảy ra", ok: false });
         }
+        setTimeout(() => setToast(null), 3000);
     };
 
-    const getStatusLabel = (status: string) => {
-        switch (status) {
-            case "Displaying": return "Đang hiển thị";
-            case "Scheduled": return "Lên lịch";
-            case "Expired": return "Hết hạn";
-            default: return status;
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} sự kiện nổi bật?`)) return;
+        try {
+            const res = await FeaturedApi.deleteFeaturedEvent(selectedIds);
+            if (res.statusCode === 200 || res.statusCode === 204) {
+                setToast({ msg: "Xóa hàng loạt sự kiện nổi bật thành công", ok: true });
+                queryClient.invalidateQueries({ queryKey: ["featuredEvents"] });
+                setSelectedIds([]);
+            } else {
+                setToast({ msg: res.message || "Xóa thất bại", ok: false });
+            }
+        } catch (error: any) {
+            setToast({ msg: error.message || "Có lỗi xảy ra", ok: false });
         }
+        setTimeout(() => setToast(null), 3000);
     };
 
     return (
         <div className="flex flex-col gap-6">
+            <Toast toast={toast} onClose={() => setToast(null)} />
+            
             {/* Header Actions */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -112,8 +152,26 @@ export default function FeaturedList() {
             </div>
 
             {/* Table */}
-            <div className="w-full bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="w-full bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden min-h-[400px] flex flex-col relative">
+                {isLoading && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm gap-4">
+                        <div className="w-10 h-10 border-4 border-[#0092B8]/30 border-t-[#0092B8] rounded-full animate-spin" />
+                        <p className="text-gray-500 font-medium text-sm animate-pulse">Đang tải dữ liệu...</p>
+                    </div>
+                )}
+                
+                {isError && !isLoading && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 gap-4">
+                        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500">
+                            <X size={32} />
+                        </div>
+                        <div className="text-center">
+                            <h3 className="font-bold text-gray-800 text-lg">Lỗi tải dữ liệu</h3>
+                        </div>
+                    </div>
+                )}
+
+                <div className="overflow-x-auto flex-1">
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs text-gray-500 uppercase bg-gray-50/50 border-b border-gray-100 font-semibold tracking-wider">
                             <tr>
@@ -128,26 +186,25 @@ export default function FeaturedList() {
                                     </div>
                                 </th>
                                 <th className="px-5 py-4 w-24 text-center">Thứ tự</th>
-                                <th className="px-5 py-4">Sự kiện</th>
+                                <th className="px-5 py-4">Tên sự kiện</th>
                                 <th className="px-5 py-4">Thời gian hiển thị</th>
                                 <th className="px-5 py-4 text-center">Trạng thái</th>
-                                <th className="px-5 py-4 text-center">Lượt Click</th>
                                 <th className="px-5 py-4 text-right">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {paginatedItems.map((item, index) => {
-                                const isSelected = selectedIds.includes(item.id);
+                            {paginatedItems.map((item) => {
+                                const isSelected = selectedIds.includes(item.featuredEventId);
 
                                 return (
-                                    <tr key={item.id} className={`hover:bg-blue-50/30 transition-colors ${isSelected ? 'bg-blue-50/50' : ''}`}>
+                                    <tr key={item.featuredEventId} className={`hover:bg-blue-50/30 transition-colors ${isSelected ? 'bg-blue-50/50' : ''}`}>
                                         <td className="p-5">
                                             <div className="flex items-center justify-center">
                                                 <input
                                                     type="checkbox"
                                                     className="w-4 h-4 rounded-md border-gray-300 text-[#0092B8] focus:ring-[#0092B8]/20 cursor-pointer"
                                                     checked={isSelected}
-                                                    onChange={() => toggleSelect(item.id)}
+                                                    onChange={() => toggleSelect(item.featuredEventId)}
                                                 />
                                             </div>
                                         </td>
@@ -155,12 +212,9 @@ export default function FeaturedList() {
                                             <span className="font-bold text-[#0092B8] text-lg">{item.priority}</span>
                                         </td>
                                         <td className="px-5 py-4">
-                                            <div className="flex items-center gap-4">
-                                                <img src={item.thumbnailUrl} alt="" className="w-20 h-12 object-cover rounded-xl shadow-sm border border-gray-100" />
-                                                <div className="flex flex-col gap-1 max-w-[250px]">
-                                                    <span className="font-bold text-gray-800 truncate" title={item.title}>{item.title}</span>
-                                                    <span className="text-[10px] text-gray-400 font-medium truncate">{item.organization}</span>
-                                                </div>
+                                            <div className="flex flex-col gap-1 max-w-[300px]">
+                                                <span className="font-bold text-gray-800 truncate" title={item.eventTitle}>{item.eventTitle}</span>
+                                                <span className="text-[10px] text-gray-400 font-medium">ID: {item.eventId}</span>
                                             </div>
                                         </td>
                                         <td className="px-5 py-4">
@@ -180,22 +234,19 @@ export default function FeaturedList() {
                                             </div>
                                         </td>
                                         <td className="px-5 py-4 text-center">
-                                            <div className={`inline-flex items-center px-3 py-1.5 rounded-xl border text-[11px] font-bold tracking-wide uppercase ${getStatusStyle(item.status)}`}>
-                                                {getStatusLabel(item.status)}
+                                            <div className={`inline-flex items-center px-3 py-1.5 rounded-xl border text-[11px] font-bold tracking-wide uppercase ${getStatusStyle(getStatus(item.startDate, item.endDate))}`}>
+                                                {getStatusLabel(getStatus(item.startDate, item.endDate))}
                                             </div>
-                                        </td>
-                                        <td className="px-5 py-4 text-center">
-                                            <span className="font-bold text-gray-700 text-sm">{item.clicks.toLocaleString()}</span>
                                         </td>
                                         <td className="px-5 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button onClick={() => handleViewDetail(item)} className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all" title="Xem chi tiết">
+                                                <button onClick={() => handleViewDetail(item)} className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all" title="Xem chi tiết sự kiện">
                                                     <Eye size={16} />
                                                 </button>
                                                 <button onClick={() => handleEdit(item)} className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-all" title="Chỉnh sửa">
                                                     <Edit3 size={16} />
                                                 </button>
-                                                <button onClick={() => handleDelete(item.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Xóa">
+                                                <button onClick={() => handleDelete(item.featuredEventId)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Xóa">
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
@@ -203,19 +254,26 @@ export default function FeaturedList() {
                                     </tr>
                                 );
                             })}
+                            {!isLoading && paginatedItems.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="p-8 text-center text-gray-500 font-medium">
+                                        Không có dữ liệu
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between px-6 py-4 bg-white border-t border-gray-100">
+                <div className="flex items-center justify-between px-6 py-4 bg-white border-t border-gray-100 mt-auto">
                     <span className="text-sm text-gray-500 font-medium">
-                        Hiển thị <span className="font-bold text-gray-800">{paginatedItems.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</span> đến <span className="font-bold text-gray-800">{Math.min(currentPage * itemsPerPage, featured.length)}</span> trong <span className="font-bold text-gray-800">{featured.length}</span> mục
+                        Hiển thị <span className="font-bold text-gray-800">{paginatedItems.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</span> đến <span className="font-bold text-gray-800">{Math.min(currentPage * itemsPerPage, totalElements)}</span> trong <span className="font-bold text-gray-800">{totalElements}</span> mục
                     </span>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            disabled={currentPage === 1}
+                            disabled={currentPage === 1 || totalPages === 0}
                             className="p-2 rounded-xl hover:bg-gray-100 disabled:opacity-50 transition-colors text-gray-600"
                         >
                             <ChevronLeft size={18} />
@@ -248,12 +306,12 @@ export default function FeaturedList() {
                     featuredEvent={selectedFeatured} 
                     mode={formMode} 
                     onClose={() => setIsFormOpen(false)} 
-                />
-            )}
-            {isDetailOpen && selectedDetailItem && (
-                <FeaturedDetailModal
-                    featuredEvent={selectedDetailItem}
-                    onClose={() => setIsDetailOpen(false)}
+                    onSuccess={() => {
+                        setIsFormOpen(false);
+                        setToast({ msg: formMode === "create" ? "Thêm mới thành công" : "Cập nhật thành công", ok: true });
+                        setTimeout(() => setToast(null), 3000);
+                        queryClient.invalidateQueries({ queryKey: ["featuredEvents"] });
+                    }}
                 />
             )}
         </div>

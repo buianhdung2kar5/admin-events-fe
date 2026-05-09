@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getStoredToken, logout } from "./authService";
+import { logout, getValidToken, refreshToken } from "./authService";
 
 export interface ApiResponse<T = any> {
   errorCode: number;
@@ -18,8 +18,8 @@ const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use(
-  (config) => {
-    const token = getStoredToken();
+  async (config) => {
+    const token = await getValidToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -35,11 +35,27 @@ apiClient.interceptors.response.use(
   (response) => {
     return response.data; // Chỉ trả về dữ liệu từ server
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
     const status = error.response ? error.response.status : null;
 
-    if (status === 401) {
-      console.error("Phiên đăng nhập hết hạn.");
+    // Nếu lỗi 401 và chưa thử retry
+    if (status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      console.warn("401 Unauthorized detected, attempting token refresh...");
+      
+      const newToken = await refreshToken();
+      if (newToken) {
+        console.log("Token refreshed successfully, retrying request.");
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return apiClient(originalRequest);
+      }
+      
+      // Nếu refresh thất bại, logout
+      console.error("Token refresh failed, logging out.");
+      logout();
+    } else if (status === 401) {
+      // Nếu đã thử retry rồi vẫn 401 thì logout luôn
       logout();
     }
 

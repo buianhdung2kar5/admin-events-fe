@@ -29,7 +29,6 @@ export default function AuthProvider({ children }: Props) {
       setIsLoading(false);
     });
 
-    // Cleanup: Huỷ lắng nghe khi component unmount
     return () => unsubscribe();
   }, []);
 
