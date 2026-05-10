@@ -158,8 +158,8 @@ export default function DocList({ filter }: DocListProps) {
                                         </td>
                                         <td className="px-5 py-4">
                                             <div className="flex flex-col min-w-0">
-                                                <span className="text-sm font-bold text-gray-700 truncate leading-tight">User #{doc.userId}</span>
-                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">UID: {doc.userId}</span>
+                                                <span className="text-sm font-bold text-gray-700 truncate leading-tight">{doc.userSummary?.fullName || `User #${doc.userSummary?.userId}`}</span>
+                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">UID: {doc.userSummary?.userId}</span>
                                             </div>
                                         </td>
                                         <td className="px-5 py-4">

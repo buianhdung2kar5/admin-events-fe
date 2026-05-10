@@ -1,10 +1,11 @@
 import apiClient from '../apiClient'
 export const ReportsApi={
-    getAllReports(page: number, size: number, sort?: string){
+    getAllReports(page: number, size: number, sort?: string, status?: string){
         return apiClient.get('/reports', {params:{
             page: page,
             size: size,
-            sort: sort
+            sort: sort,
+            status: status
         }})
     },
 

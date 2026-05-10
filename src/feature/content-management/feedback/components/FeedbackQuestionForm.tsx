@@ -36,14 +36,13 @@ export default function FeedbackQuestionForm({ eventId, onClose, onSave }: Props
         const validOptions = options.filter(o => o.trim());
         if (needsOptions && validOptions.length < 2) return;
         onSave({
-            id: `q-${Date.now()}`,
-            eventId,
-            content: content.trim(),
-            type,
-            options: needsOptions ? validOptions : undefined,
-            required,
-            order: Date.now()
-        });
+            feedbackQuestionId: Date.now(),
+            event: { eventId: parseInt(eventId, 10) } as any,
+            questionContent: content.trim(),
+            questionType: type,
+            options: needsOptions ? validOptions.map(o => ({ optionValue: o })) : [],
+            isRequired: required
+        } as FeedbackQuestion);
         onClose();
     };
 

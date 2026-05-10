@@ -3,7 +3,7 @@ import apiClient, { ApiResponse } from '../apiClient'
 export const CategoryApi = {
     getAllCategory(
         page:number=0,
-        size:number=20
+        size:number=200
     ):Promise<ApiResponse>{      
         return apiClient.get<any, ApiResponse>('/categories', { params: { page, size } });
     },

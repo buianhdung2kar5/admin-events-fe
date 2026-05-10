@@ -31,7 +31,7 @@ export default function TableData<T>({
     className = ""
 }: TableDataProps<T>) {
     return (
-        <div className={`w-full bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col overflow-hidden font-sans ${className}`}>
+        <div className={`w-full bg-white border border-gray-100 shadow-sm flex flex-col overflow-hidden font-sans ${className}`}>
             <div className="p-6 pb-2 flex justify-between items-center">
                 <div className="flex items-center gap-3">
                     {icon && (

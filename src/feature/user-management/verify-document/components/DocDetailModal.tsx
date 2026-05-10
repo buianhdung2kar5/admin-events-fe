@@ -99,10 +99,10 @@ export default function DocDetailModal({ doc, onClose, onApprove, onReject }: Do
                             <p className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Thông tin người gửi</p>
                             <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100/50">
                                 <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-[#0092B8] font-black text-xl">
-                                    {doc.userId}
+                                    {doc.userSummary?.userId}
                                 </div>
                                 <div>
-                                    <p className="font-bold text-sm text-gray-800">User #{doc.userId}</p>
+                                    <p className="font-bold text-sm text-gray-800">{doc.userSummary?.fullName || `User #${doc.userSummary?.userId}`}</p>
                                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight mt-0.5">Mã người dùng hệ thống</p>
                                 </div>
                             </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TableData from '../../../../components/TableData';
 import { NewsItem } from '../data/NewsMockData';
 import { Trash2, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -8,7 +8,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { NewApi } from '../../../../services/news-management/NewApi';
 import Toast from '../../../../components/common/Toast';
 
-const NewsList: React.FC = () => {
+interface NewsListProps {
+    filter?: { search?: string; filter1?: string; };
+    onTagsLoaded?: (tags: { label: string; value: string }[]) => void;
+}
+
+const NewsList: React.FC<NewsListProps> = ({ filter, onTagsLoaded }) => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,14 +21,41 @@ const NewsList: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(0);
     const pageSize = 6;
 
+    // Reset page on filter change
+    useEffect(() => { setCurrentPage(0); }, [filter?.search, filter?.filter1]);
+
     const { data: newsResponse, isLoading } = useQuery({
-        queryKey: ['news', currentPage, pageSize],
-        queryFn: () => NewApi.getAllNews(currentPage, pageSize, ["createdTime,desc"]),
+        queryKey: ['news'],
+        queryFn: () => NewApi.getAllNews(0, 200, ["createdTime,desc"]),
     });
 
-    const newsList = newsResponse?.object?.content || [];
-    const totalElements = newsResponse?.object?.totalElements || 0;
-    const totalPages = newsResponse?.object?.totalPages || 0;
+    const allNews: NewsItem[] = newsResponse?.object?.content || [];
+
+    // Expose unique tags to parent for dynamic dropdown
+    useEffect(() => {
+        if (!onTagsLoaded || allNews.length === 0) return;
+        const tagSet = new Set<string>();
+        allNews.forEach(item => {
+            if (item.tag) item.tag.split(',').forEach(t => tagSet.add(t.trim()));
+        });
+        const tagOptions = [
+            { label: "Tất cả thẻ", value: "" },
+            ...Array.from(tagSet).sort().map(t => ({ label: t, value: t }))
+        ];
+        onTagsLoaded(tagOptions);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [allNews.length]);
+
+    // Client-side filtering
+    const filteredNews = allNews.filter((item) => {
+        const matchKeyword = !filter?.search || item.title.toLowerCase().includes(filter.search.toLowerCase());
+        const matchTag = !filter?.filter1 || (item.tag && item.tag.split(',').map(t => t.trim()).includes(filter.filter1));
+        return matchKeyword && matchTag;
+    });
+
+    const totalElements = filteredNews.length;
+    const totalPages = Math.max(1, Math.ceil(totalElements / pageSize));
+    const newsList = filteredNews.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
 
     const handleCreate = () => {
         setIsModalOpen(true);
@@ -119,8 +151,8 @@ const NewsList: React.FC = () => {
         <div className="flex flex-col gap-6">
             <div className="flex justify-between items-center bg-white p-4 rounded-lg border border-gray-100">
                 <div>
-                    <h2 className="text-xl font-bold text-gray-800 tracking-tight">Quản lý Tin tức</h2>
-                    <p className="text-xs text-gray-400 font-medium">Quản lý nội dung bài viết và phần thưởng coin</p>
+                    <h2 className="text-xl font-bold text-gray-800 tracking-tight">Danh sách Tin tức</h2>
+                    <p className="text-xs text-gray-400 font-medium">Xem danh sách các bài viết</p>
                 </div>
                 <button
                     onClick={handleCreate}
@@ -141,7 +173,7 @@ const NewsList: React.FC = () => {
                     data={newsList}
                     columns={columns}
                     className="w-full border-none shadow-none"
-                    title="Danh sách bài viết"
+                    title="Tổng số bài viết"
                     totalCount={totalElements}
                 />
 

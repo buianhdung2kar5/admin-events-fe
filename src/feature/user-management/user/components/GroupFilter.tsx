@@ -4,7 +4,8 @@ import { Search, ChevronDown, Check, Calendar, X } from "lucide-react";
 import { useParams } from 'react-router-dom';
 
 interface GroupFilterProps {
-    setFilter: (filter: any) => void
+    setFilter: (filter: any) => void;
+    filter1Options?: Option[]; // Optional dynamic options for filter1
 }
 
 interface Option {
@@ -123,28 +124,73 @@ const FILTER_CONFIG: any = {
             label: "Trạng thái",
             options: [
                 { label: "Tất cả trạng thái", value: "" },
-                { label: "Lưu nháp", value: "DRAFT" },
+                { label: "Nháp", value: "DRAFT" },
                 { label: "Đã xuất bản", value: "PUBLISHED" },
-                { label: "Đang diễn ra", value: "ONGOING" },
-                { label: "Đã kết thúc", value: "COMPLETED" },
+                { label: "Đã đóng", value: "CLOSED" },
                 { label: "Đã hủy", value: "CANCELLED" }
             ]
         },
-        filter2: {
-            label: "Loại sự kiện",
+        filter2: null,
+        showDate: true,
+        datePlaceholder: "Từ ngày bắt đầu"
+    },
+    "recruitment": {
+        filter1: {
+            label: "Trạng thái",
+            options: [
+                { label: "Tất cả trạng thái", value: "" },
+                { label: "Đang mở", value: "OPEN" },
+                { label: "Đã đóng", value: "CLOSED" }
+            ]
+        },
+        filter2: null,
+        showDate: false
+    },
+    "news": {
+        filter1: {
+            label: "Thẻ (tag)",
+            options: [{ label: "Tất cả thẻ", value: "" }]
+        },
+        filter2: null,
+        showDate: false
+    },
+    "featured": {
+        filter1: {
+            label: "Trạng thái",
+            options: [
+                { label: "Tất cả trạng thái", value: "" },
+                { label: "Sắp tới", value: "PENDING" },
+                { label: "Đang ghim", value: "ACTIVE" },
+                { label: "Hết hạn", value: "CLOSED" }
+            ]
+        },
+        filter2: null,
+        showDate: false
+    },
+    "category": {
+        filter1: {
+            label: "Loại danh mục",
             options: [
                 { label: "Tất cả loại", value: "" },
-                { label: "Sự kiện", value: "Event" },
-                { label: "Cuộc thi", value: "Competition" },
-                { label: "Tuyển dụng", value: "Recruitment" }
+                { label: "Trường học", value: "SCHOOL" },
+                { label: "Lĩnh vực", value: "FIELD" },
+                { label: "Địa điểm", value: "LOCATION" },
+                { label: "Hình thức", value: "STYLE" },
+                { label: "Mức giá", value: "PRICE" }
             ]
-        }
+        },
+        filter2: null
     }
 };
 
-export default function GroupFilter({ setFilter }: GroupFilterProps) {
+export default function GroupFilter({ setFilter, filter1Options }: GroupFilterProps) {
     const { type } = useParams();
-    const currentConfig = FILTER_CONFIG[type || "user"] || FILTER_CONFIG["user"];
+    const baseConfig = FILTER_CONFIG[type || "user"] || FILTER_CONFIG["user"];
+
+    // If dynamic options provided, override filter1 options
+    const currentConfig = filter1Options
+        ? { ...baseConfig, filter1: { ...baseConfig.filter1, options: filter1Options } }
+        : baseConfig;
 
     const { register, watch, setValue, reset } = useForm({
         defaultValues: {
@@ -181,6 +227,9 @@ export default function GroupFilter({ setFilter }: GroupFilterProps) {
         });
     };
 
+    const showDate = currentConfig.showDate !== false && type !== "category";
+    const datePlaceholder = currentConfig.datePlaceholder || "Ngày tạo";
+
     return (
         <div className="bg-white p-2 pl-6 pr-2 rounded-3xl border border-gray-100 shadow-sm flex items-center justify-between w-full group focus-within:ring-4 focus-within:ring-blue-50/50 focus-within:border-blue-100 transition-all duration-300">
             <div className="flex items-center gap-3 flex-1">
@@ -188,23 +237,26 @@ export default function GroupFilter({ setFilter }: GroupFilterProps) {
                 <input
                     {...register("search")}
                     type="text"
-                    placeholder="Tìm kiếm thông tin..."
+                    placeholder={type === "category" ? "Tìm kiếm tên danh mục..." : "Tìm kiếm thông tin..."}
                     className="flex-1 bg-transparent border-none outline-none focus:ring-0 text-sm py-3 text-gray-700 font-medium placeholder:text-gray-300 placeholder:font-normal rounded-2xl"
                 />
             </div>
 
             <div className="flex items-center gap-1">
-                {/* Date Filter */}
-                <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-transparent hover:border-gray-200 transition-all group/date">
-                    <Calendar size={14} className="text-gray-400 group-hover/date:text-[#0092B8] transition-colors" />
-                    <input
-                        {...register("date")}
-                        type="date"
-                        className="text-[10px] font-bold text-gray-500 bg-transparent outline-none border-none p-0 cursor-pointer"
-                    />
-                </div>
-                
-                <div className="h-6 w-px bg-gray-100 mx-1"></div>
+                {/* Date Filter - hidden for category */}
+                {showDate && (
+                    <>
+                        <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-transparent hover:border-gray-200 transition-all group/date">
+                            <Calendar size={14} className="text-gray-400 group-hover/date:text-[#0092B8] transition-colors" />
+                            <input
+                                {...register("date")}
+                                type="date"
+                                className="text-[10px] font-bold text-gray-500 bg-transparent outline-none border-none p-0 cursor-pointer"
+                            />
+                        </div>
+                        <div className="h-6 w-px bg-gray-100 mx-1"></div>
+                    </>
+                )}
 
                 <CustomDropdown
                     label={currentConfig.filter1.label}
@@ -212,13 +264,18 @@ export default function GroupFilter({ setFilter }: GroupFilterProps) {
                     value={values.filter1}
                     onSelect={(val) => setValue("filter1", val)}
                 />
-                <div className="h-6 w-px bg-gray-100 mx-1"></div>
-                <CustomDropdown
-                    label={currentConfig.filter2.label}
-                    options={currentConfig.filter2.options}
-                    value={values.filter2}
-                    onSelect={(val) => setValue("filter2", val)}
-                />
+
+                {currentConfig.filter2 && (
+                    <>
+                        <div className="h-6 w-px bg-gray-100 mx-1"></div>
+                        <CustomDropdown
+                            label={currentConfig.filter2.label}
+                            options={currentConfig.filter2.options}
+                            value={values.filter2}
+                            onSelect={(val) => setValue("filter2", val)}
+                        />
+                    </>
+                )}
 
                 {hasFilter && (
                     <>

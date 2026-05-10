@@ -1,6 +1,15 @@
+export interface UserSummary {
+    userId: number;
+    fullName: string | null;
+    avatarUrl: string | null;
+    role: string;
+    status: string;
+    joinedAt: string;
+}
+
 export interface VerificationDocument {
     verificationDocumentId: number;
-    userId: number;
+    userSummary?: UserSummary;
     documentType: string;
     fileUrl: string;
     originalFileName: string;

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-    ChevronLeft, ChevronRight, Eye, Users, Search, X, Trash2,
-    Calendar, MapPin, DollarSign, Award, Star, Filter
+    ChevronLeft, ChevronRight, Eye, Users,
+    Calendar, DollarSign, Star, Trash2
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RecruitmentApi } from "../../../../services/events-management/Recruitments";
@@ -9,16 +9,21 @@ import { RecruitmentItem } from "../data/RecruitmentMockData";
 import RecruitmentDetailPanel from "./RecruitmentDetailPanel";
 import Toast from "../../../../components/common/Toast";
 
-export default function RecruitmentList() {
+interface RecruitmentListProps {
+    filter?: { search?: string; filter1?: string; };
+}
+
+export default function RecruitmentList({ filter }: RecruitmentListProps) {
     const queryClient = useQueryClient();
 
     const [currentPage, setCurrentPage] = useState(0);
     const pageSize = 8;
 
-    const [search, setSearch] = useState("");
-    const [filterStatus, setFilterStatus] = useState<"ALL" | "OPEN" | "CLOSED">("ALL");
     const [detailId, setDetailId] = useState<number | null>(null);
     const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+
+    // Reset page on filter change
+    useEffect(() => { setCurrentPage(0); }, [filter?.search, filter?.filter1]);
 
     const showToast = (msg: string, ok: boolean) => {
         setToast({ msg, ok });
@@ -27,25 +32,29 @@ export default function RecruitmentList() {
 
     // Fetch danh sách
     const { data: response, isLoading, isError } = useQuery({
-        queryKey: ["recruitments", currentPage, pageSize],
-        queryFn: () => RecruitmentApi.getAllRecruitment(currentPage, pageSize, ["createdTime,desc"]),
+        queryKey: ["recruitments"],
+        queryFn: () => RecruitmentApi.getAllRecruitment(0, 200, ["createdTime,desc"]),
     });
 
     const allItems: RecruitmentItem[] = response?.object?.content || [];
-    const totalPages: number = response?.object?.totalPages || 0;
-    const totalElements: number = response?.object?.totalElements || 0;
+    const totalElements = allItems.length;
 
-    // Filter phía client theo search + status
+    // FE filter by keyword + status from GroupFilter
     const filtered = allItems.filter(r => {
-        const matchSearch =
-            r.title.toLowerCase().includes(search.toLowerCase()) ||
-            r.roleName.toLowerCase().includes(search.toLowerCase());
+        const keyword = filter?.search || "";
+        const matchSearch = !keyword ||
+            r.title.toLowerCase().includes(keyword.toLowerCase()) ||
+            r.roleName.toLowerCase().includes(keyword.toLowerCase());
+        const statusParam = filter?.filter1 || "";
         const matchStatus =
-            filterStatus === "ALL" ||
-            (filterStatus === "OPEN" && r.isOpen) ||
-            (filterStatus === "CLOSED" && !r.isOpen);
+            !statusParam ||
+            (statusParam === "OPEN" && r.isOpen) ||
+            (statusParam === "CLOSED" && !r.isOpen);
         return matchSearch && matchStatus;
     });
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const paginatedItems = filtered.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
 
     // Xóa một recruitment
     const handleDelete = async (id: number) => {
@@ -86,36 +95,6 @@ export default function RecruitmentList() {
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <h2 className="text-lg font-bold text-gray-800">Danh sách đợt tuyển CTV</h2>
-                <div className="flex items-center gap-3 flex-wrap">
-                    {/* Status Filter */}
-                    <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl p-1">
-                        {(["ALL", "OPEN", "CLOSED"] as const).map(s => (
-                            <button
-                                key={s}
-                                onClick={() => { setFilterStatus(s); setCurrentPage(0); }}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filterStatus === s ? "bg-[#0092B8] text-white shadow-sm" : "text-gray-500 hover:text-gray-800"}`}
-                            >
-                                {s === "ALL" ? "Tất cả" : s === "OPEN" ? "Đang mở" : "Đã đóng"}
-                            </button>
-                        ))}
-                    </div>
-                    {/* Search */}
-                    <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 focus-within:border-[#0092B8] transition-all">
-                        <Search size={15} className="text-gray-400" />
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => { setSearch(e.target.value); setCurrentPage(0); }}
-                            placeholder="Tìm đợt tuyển..."
-                            className="text-sm outline-none bg-transparent w-40 placeholder:text-gray-400"
-                        />
-                        {search && (
-                            <button onClick={() => setSearch("")}>
-                                <X size={14} className="text-gray-400" />
-                            </button>
-                        )}
-                    </div>
-                </div>
             </div>
 
             {/* Table */}
@@ -156,7 +135,7 @@ export default function RecruitmentList() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    filtered.map(r => (
+                                    paginatedItems.map(r => (
                                         <tr key={r.ctvRecruitmentId} className="hover:bg-blue-50/20 transition-colors">
                                             {/* Title + Role */}
                                             <td className="px-5 py-4">
@@ -280,10 +259,10 @@ export default function RecruitmentList() {
                 )}
 
                 {/* Pagination */}
-                {totalPages > 0 && (
+                {totalPages > 1 && (
                     <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
                         <span className="text-sm text-gray-500 font-medium">
-                            Tổng <span className="font-bold text-gray-800">{totalElements}</span> đợt tuyển
+                            Tổng <span className="font-bold text-gray-800">{filtered.length}</span> đợt tuyển
                         </span>
                         <div className="flex items-center gap-2">
                             <button

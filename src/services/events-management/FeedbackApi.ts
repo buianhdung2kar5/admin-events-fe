@@ -1,11 +1,15 @@
 import apiClient, { ApiResponse } from "../apiClient"
-export const FeedbackApi  = {
-    getAllFeedbackByEventId: (eventId: string,page:number=0,size:number=20):Promise<ApiResponse> => apiClient.get<any, ApiResponse>(`/feedbacks/${eventId}`,{params:{page,size}}),
+export const FeedbackApi = {
+    getAllFeedbackByEventId: (eventId: string, page: number = 0, size: number = 20): Promise<ApiResponse> => apiClient.get<any, ApiResponse>(`/feedbacks`, { params: { eventId, page, size } }),
+    getFeedbackById: (feedbackId: string): Promise<ApiResponse> => apiClient.get<any, ApiResponse>(`/feedbacks/${feedbackId}`),
+    getAllQuestionByEventId: (eventId: string, page: number = 0, size: number = 20): Promise<ApiResponse> => apiClient.get<any, ApiResponse>(`/feedback-questions`, { params: { eventId, page, size } }),
+    getQuestionById: (questionId: string): Promise<ApiResponse> => apiClient.get<any, ApiResponse>(`/feedback-questions/${questionId}`),
 
-    getAllQuestionByEventId: (eventId: string,page:number=0,size:number=20):Promise<ApiResponse> => apiClient.get<any, ApiResponse>(`/feedback-questions/${eventId}`,{params:{page,size}}),
- 
+    createQuestion: (data: QuestionData): Promise<ApiResponse> => apiClient.post<any, ApiResponse>(`/feedback-questions`, data),
 
-    createQuestion: (data: any):Promise<ApiResponse> => apiClient.post<any, ApiResponse>(`/feedback-questions`, data),
+    deleteQuestion: (questionId: number[]): Promise<ApiResponse> => apiClient.delete<any, ApiResponse>(`/feedback-questions`, { data: questionId }),
+
+
 }
 
 export interface QuestionOption {

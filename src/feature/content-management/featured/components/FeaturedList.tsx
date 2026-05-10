@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Edit3, Trash2, Clock, Plus, X, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -7,7 +7,11 @@ import FeaturedFormModal from "./FeaturedFormModal";
 import Toast from "../../../../components/common/Toast";
 import { FeaturedApi } from "../../../../services/events-management/FeaturedEventsApi";
 
-export default function FeaturedList() {
+interface FeaturedListProps {
+    filter?: { search?: string; filter1?: string; };
+}
+
+export default function FeaturedList({ filter }: FeaturedListProps) {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     
@@ -21,27 +25,39 @@ export default function FeaturedList() {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 6;
 
+    // Reset page on filter change
+    useEffect(() => { setCurrentPage(1); }, [filter?.search, filter?.filter1]);
+
     const { data: eventData, isLoading, isError } = useQuery({
-        queryKey: ["featuredEvents", currentPage],
+        queryKey: ["featuredEvents"],
         queryFn: async () => {
-            const response = await FeaturedApi.getAllFeaturedEvents(currentPage - 1, itemsPerPage);
+            const response = await FeaturedApi.getAllFeaturedEvents(0, 200);
             return response;
         },
     });
 
-    const paginatedItems: FeaturedEventData[] = eventData?.object?.content || [];
-    const totalPages = eventData?.object?.totalPages || 1;
-    const totalElements = eventData?.object?.totalElements || 0;
+    const allItems: FeaturedEventData[] = eventData?.object?.content || [];
 
+    // Client-side filtering
     const getStatus = (startDate: string, endDate: string) => {
         const now = new Date();
         const start = new Date(startDate);
         const end = new Date(endDate);
-
         if (now < start) return "PENDING";
         if (now > end) return "CLOSED";
         return "ACTIVE";
     };
+    const filteredItems = allItems.filter((item) => {
+        const matchKeyword = !filter?.search || item.eventTitle?.toLowerCase().includes(filter.search.toLowerCase());
+        const computedStatus = getStatus(item.startDate, item.endDate);
+        const matchStatus = !filter?.filter1 || computedStatus === filter.filter1;
+        return matchKeyword && matchStatus;
+    });
+
+    const totalElements = filteredItems.length;
+    const totalPages = Math.max(1, Math.ceil(totalElements / itemsPerPage));
+    const paginatedItems: FeaturedEventData[] = filteredItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
 
     const getStatusStyle = (status: string) => {
         switch (status) {

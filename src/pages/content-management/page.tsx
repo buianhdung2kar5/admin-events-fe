@@ -1,4 +1,7 @@
 import { useParams } from "react-router-dom";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { CategoryApi } from "../../services/events-management/CategoryApi";
 import GroupFilter from "../../feature/user-management/user/components/GroupFilter";
 
 import CategoryList from "../../feature/content-management/category/components/CategoryList";
@@ -20,6 +23,24 @@ import { VenueCardData } from "../../feature/content-management/venue/data/Venue
 
 export default function ContentManagement() {
     const { type } = useParams();
+    const [filter, setFilter] = useState<any>({});
+    const [newsTagOptions, setNewsTagOptions] = useState<{ label: string; value: string }[] | undefined>(undefined);
+
+    // Fetch categories to get dynamic type options for GroupFilter
+    const { data: categoryData } = useQuery({
+        queryKey: ['categories'],
+        queryFn: () => CategoryApi.getAllCategory(0, 200),
+        enabled: type === 'category',
+    });
+
+    const categoryTypeOptions = type === 'category' ? [
+        { label: "Tất cả loại", value: "" },
+        ...Array.from(
+            new Map(
+                (categoryData?.object?.content || []).map((c: any) => [c.type, c.name])
+            ).entries()
+        ).map(([value, label]) => ({ label: label as string, value: value as string }))
+    ] : undefined;
 
     if (type === "attendance") {
         return <AttendanceList />;
@@ -73,12 +94,12 @@ export default function ContentManagement() {
 
     const renderContent = () => {
         switch (type) {
-            case "category": return <CategoryList />;
-            case "event": return <EventList />;
-            case "featured": return <FeaturedList />;
-            case "news": return <NewsList />;
+            case "category": return <CategoryList filter={filter} />;
+            case "event": return <EventList filter={filter} />;
+            case "featured": return <FeaturedList filter={filter} />;
+            case "news": return <NewsList filter={filter} onTagsLoaded={setNewsTagOptions} />;
             case "notification": return <NotifList />;
-            case "recruitment": return <RecruitmentList />;
+            case "recruitment": return <RecruitmentList filter={filter} />;
             case "venue": return <VenueList />;
             default: return <CategoryList />;
         }
@@ -106,7 +127,10 @@ export default function ContentManagement() {
             </div>
 
             <div className="flex flex-col gap-6">
-                <GroupFilter setFilter={(data) => console.log("data", data)} />
+                <GroupFilter
+                    setFilter={setFilter}
+                    filter1Options={categoryTypeOptions ?? (type === 'news' ? newsTagOptions : undefined)}
+                />
                 <section className="flex flex-col gap-8">
                     {renderContent()}
                 </section>

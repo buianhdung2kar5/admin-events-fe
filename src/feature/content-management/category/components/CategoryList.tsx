@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Edit3, Trash2, Settings2, Plus, X, AlertTriangle, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CategoryApi } from "../../../../services/events-management/CategoryApi";
@@ -7,12 +7,19 @@ import CategoryFormModal from "./CategoryFormModal";
 import CategoryOptionsPanel from "./CategoryOptionsPanel";
 import Toast from "../../../../components/common/Toast";
 
-export default function CategoryList() {
+interface CategoryListProps {
+    filter?: { search?: string; filter1?: string; };
+}
+
+export default function CategoryList({ filter }: CategoryListProps) {
     const queryClient = useQueryClient();
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 20;
+
+    // Reset to page 1 when filter changes
+    useEffect(() => { setCurrentPage(1); }, [filter?.search, filter?.filter1]);
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isOptionsOpen, setIsOptionsOpen] = useState(false);
@@ -28,15 +35,25 @@ export default function CategoryList() {
     };
 
     const { data: queryData, isLoading, isError } = useQuery({
-        queryKey: ['categories', currentPage, itemsPerPage],
+        queryKey: ['categories'],
         queryFn: async () => {
-            const res = await CategoryApi.getAllCategory(currentPage - 1, itemsPerPage);
+            const res = await CategoryApi.getAllCategory(0, 200);
             return res;
         }
     });
-    const paginatedItems = queryData?.object?.content || [];
-    const totalPages = queryData?.object?.totalPages || 1;
-    const totalRecords = queryData?.object?.totalElements || 0;
+
+    const allItems: CategoryInterface[] = queryData?.object?.content || [];
+
+    // Client-side filtering
+    const filteredItems = allItems.filter((cat) => {
+        const matchKeyword = !filter?.search || cat.name.toLowerCase().includes(filter.search.toLowerCase());
+        const matchType = !filter?.filter1 || cat.type === filter.filter1;
+        return matchKeyword && matchType;
+    });
+
+    const totalRecords = filteredItems.length;
+    const totalPages = Math.max(1, Math.ceil(totalRecords / itemsPerPage));
+    const paginatedItems = filteredItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
     
     const selectedCategory = paginatedItems.find((c: CategoryInterface) => c.categoryId === selectedCategoryId) || null;
 

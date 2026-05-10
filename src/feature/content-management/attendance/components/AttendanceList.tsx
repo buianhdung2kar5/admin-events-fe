@@ -7,7 +7,6 @@ export default function AttendanceList() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const eventId = searchParams.get("eventId");
-    
     const [event, setEvent] = useState<any | null>(null);
 
     useEffect(() => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Trash2, Eye, Calendar, MapPin, Users, Lock, Unlock, X, MessageSquare, ClipboardList } from "lucide-react";
 import { getEventStatusStyles } from "../data/EventMockData";
@@ -6,7 +6,12 @@ import Toast from "../../../../components/common/Toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { EventsApi } from "../../../../services/events-management/EventsApi";
 import { SystemManagementApi } from "../../../../services/system-management/SystemManagementApi";
-export default function EventList() {
+
+interface EventListProps {
+    filter?: { search?: string; filter1?: string; date?: string; };
+}
+
+export default function EventList({ filter }: EventListProps) {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const navigate = useNavigate();
     
@@ -17,11 +22,21 @@ export default function EventList() {
 
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 6;
+
+    // Reset to page 1 on filter change
+    useEffect(() => { setCurrentPage(1); }, [filter?.search, filter?.filter1, filter?.date]);
     
     const { data: eventData, isLoading, isError } = useQuery({
-        queryKey: ["events", currentPage],
+        queryKey: ["events", currentPage, filter?.search, filter?.filter1, filter?.date],
         queryFn: async () => {
-            const response = await EventsApi.getAll(currentPage - 1, itemsPerPage);
+            const response = await EventsApi.getAll(
+                currentPage - 1,
+                itemsPerPage,
+                filter?.search || undefined,
+                undefined,
+                filter?.filter1 || undefined,
+                filter?.date ? `${filter.date}T00:00:00` : undefined,
+            );
             return response;
         },
     });
