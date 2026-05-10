@@ -1,5 +1,13 @@
 import React from 'react';
-import { RecentActivities, ActivityItem } from '../data/MockData';
+import { User, Calendar, Flag, CheckCircle, Megaphone } from 'lucide-react';
+
+const RecentActivities = [
+    { id: "1", content: "Người dùng mới đăng ký tài khoản", time: "Vừa xong", icon: <User size={18} />, color: "cyan" },
+    { id: "2", content: "Sự kiện mới được tạo", time: "Gần đây", icon: <Calendar size={18} />, color: "blue" },
+    { id: "3", content: "Báo cáo mới chờ xử lý", time: "Gần đây", icon: <Flag size={18} />, color: "red" },
+    { id: "4", content: "Tài liệu xác thực được duyệt", time: "Gần đây", icon: <CheckCircle size={18} />, color: "green" },
+    { id: "5", content: "Thông báo hệ thống được gửi", time: "Gần đây", icon: <Megaphone size={18} />, color: "purple" },
+];
 
 export default function ActivityCard() {
     const colorMap: Record<string, { bg: string, iconBg: string, text: string }> = {
