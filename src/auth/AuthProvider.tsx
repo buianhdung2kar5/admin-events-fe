@@ -35,7 +35,6 @@ export default function AuthProvider({ children }: Props) {
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // loginApi trả về AdminUser trực tiếp (token đã được lưu bên trong authService)
       const adminUser = await loginApi(email, password);
       setUser(adminUser);
       setToken(getStoredToken());
@@ -47,7 +46,7 @@ export default function AuthProvider({ children }: Props) {
   const logout = useCallback(async () => {
     setIsLoading(true);
     try {
-      await logoutService(); // Đăng xuất: Backend + Firebase + localStorage
+      await logoutService(); 
     } finally {
       setUser(null);
       setToken(null);

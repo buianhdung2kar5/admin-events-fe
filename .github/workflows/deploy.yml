@@ -89,7 +89,7 @@ jobs:
           publish_branch: gh-pages
           # 🔑 QUAN TRỌNG: cóng này tự động inject CNAME vào gh-pages branch
           # → custom domain events.net.vn được giữ nguyên sau mọi lần deploy
-          cname: events.net.vn
+          cname: admin_chepcon.events.net.vn
           commit_message: "🚀 deploy: ${{ github.event.head_commit.message }}"
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"

@@ -94,9 +94,9 @@ const FILTER_CONFIG: any = {
             label: "Trạng thái", 
             options: [
                 { label: "Tất cả trạng thái", value: "" },
-                { label: "Hoạt động", value: "Active" },
-                { label: "Chờ duyệt", value: "Pending" },
-                { label: "Bị khóa", value: "Blocked" }
+                { label: "Hoạt động", value: "ACTIVE" },
+                { label: "Chờ duyệt", value: "PENDING" },
+                { label: "Bị khóa", value: "DISABLED" }
             ] 
         }
     },

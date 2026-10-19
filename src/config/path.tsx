@@ -13,12 +13,10 @@ import EventDetailPage from "../pages/content-management/event-detail/page";
 
 export default function Path() {
     return [
-        // Public route
         {
             path: "/login",
             element: <LoginPage />,
         },
-        // Protected routes
         {
             path: "/",
             element: <Navigate to="/dashboard" />,
