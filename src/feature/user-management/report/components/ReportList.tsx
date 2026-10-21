@@ -20,8 +20,8 @@ export default function ReportList() {
     const { data: response, isLoading, isError } = useQuery({
         queryKey: ['reports', currentPage],
         queryFn: async () => {
-            const res = await ReportsManagement.getAllReports(currentPage - 1, PAGE_SIZE, ['createdTime,desc']);
-            return res.object;
+            const res = await ReportsManagement.getAllReports<ReportItem>(currentPage - 1, PAGE_SIZE, ['createdTime,desc']);
+            return res;
         }
     });
 

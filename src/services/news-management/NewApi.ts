@@ -1,4 +1,5 @@
-import apiClient, { ApiResponse } from "../apiClient";
+import { http } from "../apiClient";
+import type { LegacyPage } from "../../types/api.types";
 
 export interface NewsItem {
     newsId: number;
@@ -26,7 +27,8 @@ export interface NewsResponse {
 export interface createNewsData {
     title: string,
     content: string,
-    bannerId:number,
+    /** URL ảnh đã upload qua POST /files */
+    banner: string,
     tag: string,
     targetType: string,
     targetId: number | null,
@@ -34,22 +36,11 @@ export interface createNewsData {
     rewardPerMinute:number,
 }
 
+/** Backend CHƯA có API tin tức — giữ nguyên path cũ, chỉ khớp interceptor mới. */
 export const NewApi = {
-    getAllNews:(page:number=0, size:number=20, sort:string[]):Promise<ApiResponse> => {
-        return apiClient.get<any,ApiResponse>(`/news`,{params:{page,size,sort}})
-    },
-
-    createNews:(data:createNewsData):Promise<ApiResponse> => {
-        return apiClient.post<any,ApiResponse>(`/news`,data)
-    },
-
-
-    deleteNews:(id:number):Promise<ApiResponse> => {
-        return apiClient.delete<any,ApiResponse>(`/news/${id}`)
-    },
-
-    getNewsDetail:(id:number):Promise<ApiResponse> => {
-        return apiClient.get<any,ApiResponse>(`/news/${id}`)
-    },
-    
-}
+    getAllNews: (page: number = 0, size: number = 20, sort: string[] = []): Promise<LegacyPage<NewsItem>> =>
+        http.get<LegacyPage<NewsItem>>("/news", { params: { page, size, sort } }),
+    createNews: (data: createNewsData): Promise<NewsItem> => http.post<NewsItem>("/news", data),
+    deleteNews: (id: number): Promise<void> => http.delete(`/news/${id}`),
+    getNewsDetail: (id: number): Promise<NewsItem> => http.get<NewsItem>(`/news/${id}`),
+};

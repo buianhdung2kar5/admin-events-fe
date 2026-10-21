@@ -28,7 +28,7 @@ const FinancialManagementPage = () => {
             case "transaction": return "Lịch sử và duyệt giao dịch nạp tiền";
             case "coin": return "Kiểm tra và điều chỉnh số dư Coin của người dùng";
             // case "sepay": return "Kiểm tra trạng thái callback thực tế từ SePay";
-            case "package": return "Quản lý gói subscription cho ORGANIZATION · Tạo, bật/tắt, theo dõi doanh thu";
+            case "package": return "Quản lý gói ưu đãi cho Người dùng / Tổ chức · Tạo, mở bán, ngừng bán";
             case "coin-audit": return "Audit trail mọi lần điều chỉnh coin · Lịch sử ADMIN_ADJUST, NEWS_READ, EVENT_ATTEND...";
             default: return "Giám sát tài chính và cấu hình thanh toán";
         }

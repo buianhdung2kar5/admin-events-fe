@@ -12,11 +12,7 @@ export default function FeedbackList() {
         queryKey: ["event", eventId],
         queryFn: async () => {
             if (!eventId) return null;
-            const res = await EventsApi.getById(eventId);
-            if (res.statusCode === 200) {
-                return res.object;
-            }
-            throw new Error(res.message || "Failed to fetch event");
+            return EventsApi.getById(eventId);
         },
         enabled: !!eventId
     });

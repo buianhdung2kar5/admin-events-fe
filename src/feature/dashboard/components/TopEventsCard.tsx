@@ -11,7 +11,7 @@ export default function TopEventsCard() {
         queryFn: () => EventsApi.getAll(0, 5),
     });
 
-    const events: any[] = data?.object?.content || [];
+    const events: any[] = data?.content || [];
 
     // Sort by totalParticipants desc
     const topEvents = [...events].sort((a, b) => b.totalParticipants - a.totalParticipants).slice(0, 5);

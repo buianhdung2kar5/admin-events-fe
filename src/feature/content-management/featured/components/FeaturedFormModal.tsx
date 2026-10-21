@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FeaturedEventData } from "../data/FeaturedMockData";
 import { EventsApi } from "../../../../services/events-management/EventsApi";
 import { FeaturedApi } from "../../../../services/events-management/FeaturedEventsApi";
+import { getErrorMessage } from "../../../../services/apiError";
 
 interface Props {
     featuredEvent: FeaturedEventData | null;
@@ -25,7 +26,7 @@ export default function FeaturedFormModal({ featuredEvent, mode, onClose, onSucc
         queryKey: ["allEventsForSelect"],
         queryFn: async () => {
             const res = await EventsApi.getAll(0, 100);
-            return res.object?.content || [];
+            return res.content || [];
         },
         enabled: mode === "create"
     });
@@ -58,22 +59,14 @@ export default function FeaturedFormModal({ featuredEvent, mode, onClose, onSucc
                     setIsSaving(false);
                     return;
                 }
-                const res = await FeaturedApi.createFeaturedEvent(Number(selectedEventId), priority, start, end);
-                if (res.statusCode === 200 || res.statusCode === 201) {
-                    onSuccess();
-                } else {
-                    setErrorMsg(res.message || "Tạo sự kiện nổi bật thất bại.");
-                }
+                await FeaturedApi.createFeaturedEvent(Number(selectedEventId), priority, start, end);
+                onSuccess();
             } else if (mode === "edit" && featuredEvent) {
-                const res = await FeaturedApi.updateFeaturedEvent(featuredEvent.featuredEventId, priority, start, end);
-                if (res.statusCode === 200 || res.statusCode === 201) {
-                    onSuccess();
-                } else {
-                    setErrorMsg(res.message || "Cập nhật sự kiện nổi bật thất bại.");
-                }
+                await FeaturedApi.updateFeaturedEvent(featuredEvent.featuredEventId, priority, start, end);
+                onSuccess();
             }
-        } catch (error: any) {
-            setErrorMsg(error.message || "Đã xảy ra lỗi hệ thống.");
+        } catch (error: unknown) {
+            setErrorMsg(getErrorMessage(error, "Đã xảy ra lỗi hệ thống."));
         } finally {
             setIsSaving(false);
         }

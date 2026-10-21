@@ -1,12 +1,6 @@
-import { useState, useEffect, useCallback, ReactNode } from "react";
-import { AuthContext } from "./AuthContext";
-import { AdminUser } from "./AuthContext";
-import {
-  loginApi,
-  logout as logoutService,
-  onAuthChange,
-  getStoredToken,
-} from "../services/authService";
+import { useState, useEffect, useCallback, useMemo, ReactNode } from "react";
+import { AuthContext, AdminUser } from "./AuthContext";
+import { loginApi, logout as logoutService, restoreSession, getStoredToken } from "../services/authService";
 
 interface Props {
   children: ReactNode;
@@ -17,19 +11,18 @@ export default function AuthProvider({ children }: Props) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  /**
-   * Lắng nghe Firebase Auth State thay vì chỉ đọc localStorage một lần.
-   * Firebase là "nguồn sự thật" — tự động phục hồi session khi F5,
-   * và tự động gia hạn token mỗi giờ.
-   */
+  /** Khôi phục phiên (token lưu ở localStorage) khi tải lại trang — xác thực lại với backend. */
   useEffect(() => {
-    const unsubscribe = onAuthChange((adminUser) => {
-      setUser(adminUser);
-      setToken(adminUser ? getStoredToken() : null);
+    let isActive = true;
+    restoreSession().then((restored) => {
+      if (!isActive) return;
+      setUser(restored);
+      setToken(restored ? getStoredToken() : null);
       setIsLoading(false);
     });
-
-    return () => unsubscribe();
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -46,7 +39,7 @@ export default function AuthProvider({ children }: Props) {
   const logout = useCallback(async () => {
     setIsLoading(true);
     try {
-      await logoutService(); 
+      await logoutService();
     } finally {
       setUser(null);
       setToken(null);
@@ -54,18 +47,10 @@ export default function AuthProvider({ children }: Props) {
     }
   }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isAuthenticated: !!token && !!user,
-        isLoading,
-        login,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ user, token, isAuthenticated: !!token && !!user, isLoading, login, logout }),
+    [user, token, isLoading, login, logout]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -11,6 +11,7 @@ import Toast from "../../../../components/common/Toast";
 import FeedbackQuestionsTab from "./FeedbackQuestionsTab";
 import FeedbackResponsesTab from "./FeedbackResponsesTab";
 import FeedbackStatsTab from "./FeedbackStatsTab";
+import { getErrorMessage } from "../../../../services/apiError";
 
 interface Props {
     event: any;
@@ -27,11 +28,8 @@ export default function FeedbackPanel({ event, onBack }: Props) {
     const { data: questionsData, isLoading: isLoadingQuestions } = useQuery({
         queryKey: ["feedbackQuestions", eventIdStr],
         queryFn: async () => {
-            const res = await FeedbackApi.getAllQuestionByEventId(eventIdStr);
-            if (res.statusCode === 200) {
-                return res.object?.content || res.object || [];
-            }
-            return [];
+            const res = await FeedbackApi.getAllQuestionByEventId<FeedbackQuestion>(eventIdStr);
+            return res.content ?? [];
         }
     });
 
@@ -39,11 +37,8 @@ export default function FeedbackPanel({ event, onBack }: Props) {
     const { data: feedbacksData, isLoading: isLoadingFeedbacks } = useQuery({
         queryKey: ["feedbacks", eventIdStr],
         queryFn: async () => {
-            const res = await FeedbackApi.getAllFeedbackByEventId(eventIdStr);
-            if (res.statusCode === 200) {
-                return res.object?.content || res.object || [];
-            }
-            return [];
+            const res = await FeedbackApi.getAllFeedbackByEventId<Feedback>(eventIdStr);
+            return res.content ?? [];
         }
     });
 
@@ -74,17 +69,12 @@ export default function FeedbackPanel({ event, onBack }: Props) {
         if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedQuestionIds.length} câu hỏi đã chọn?`)) return;
         try {
             setIsMutating(true);
-            const res = await FeedbackApi.deleteQuestion(selectedQuestionIds);
-            if (res.statusCode === 200) {
-                queryClient.invalidateQueries({ queryKey: ["feedbackQuestions", eventIdStr] });
-                notify("Xóa câu hỏi thành công!", true);
-                setSelectedQuestionIds([]);
-            } else {
-                notify("Xóa câu hỏi thất bại!", false);
-            }
-        } catch (error) {
-            console.error("Error bulk deleting questions", error);
-            notify("Đã xảy ra lỗi khi xóa câu hỏi!", false);
+            await FeedbackApi.deleteQuestion(selectedQuestionIds);
+            queryClient.invalidateQueries({ queryKey: ["feedbackQuestions", eventIdStr] });
+            notify("Xóa câu hỏi thành công!", true);
+            setSelectedQuestionIds([]);
+        } catch (error: unknown) {
+            notify(getErrorMessage(error, "Đã xảy ra lỗi khi xóa câu hỏi!"), false);
         } finally {
             setIsMutating(false);
         }
@@ -94,8 +84,7 @@ export default function FeedbackPanel({ event, onBack }: Props) {
         queryKey: ["feedbackDetail", selectedFeedbackId],
         queryFn: async () => {
             if (!selectedFeedbackId) return null;
-            const res = await FeedbackApi.getFeedbackById(selectedFeedbackId.toString());
-            return res.statusCode === 200 ? res.object as Feedback : null;
+            return FeedbackApi.getFeedbackById<Feedback>(selectedFeedbackId.toString());
         },
         enabled: !!selectedFeedbackId
     });
@@ -119,16 +108,11 @@ export default function FeedbackPanel({ event, onBack }: Props) {
                 options: q.options?.map(o => ({ optionValue: o.optionValue })) || [],
                 isRequired: q.isRequired
             };
-            const res = await FeedbackApi.createQuestion(payload);
-            if (res.statusCode === 200 || res.statusCode === 201) {
-                queryClient.invalidateQueries({ queryKey: ["feedbackQuestions", eventIdStr] });
-                notify("Thêm câu hỏi thành công!", true);
-            } else {
-                notify("Thêm câu hỏi thất bại!", false);
-            }
-        } catch (error) {
-            console.error("Error creating question", error);
-            notify("Đã xảy ra lỗi khi thêm câu hỏi!", false);
+            await FeedbackApi.createQuestion(payload);
+            queryClient.invalidateQueries({ queryKey: ["feedbackQuestions", eventIdStr] });
+            notify("Thêm câu hỏi thành công!", true);
+        } catch (error: unknown) {
+            notify(getErrorMessage(error, "Đã xảy ra lỗi khi thêm câu hỏi!"), false);
         } finally {
             setIsMutating(false);
         }
@@ -138,16 +122,11 @@ export default function FeedbackPanel({ event, onBack }: Props) {
         if (!window.confirm("Bạn có chắc chắn muốn xóa câu hỏi này?")) return;
         try {
             setIsMutating(true);
-            const res = await FeedbackApi.deleteQuestion([id]);
-            if (res.statusCode === 200) {
-                queryClient.invalidateQueries({ queryKey: ["feedbackQuestions", eventIdStr] });
-                notify("Xóa câu hỏi thành công!", true);
-            } else {
-                notify("Xóa câu hỏi thất bại!", false);
-            }
-        } catch (error) {
-            console.error("Error deleting question", error);
-            notify("Đã xảy ra lỗi khi xóa câu hỏi!", false);
+            await FeedbackApi.deleteQuestion([id]);
+            queryClient.invalidateQueries({ queryKey: ["feedbackQuestions", eventIdStr] });
+            notify("Xóa câu hỏi thành công!", true);
+        } catch (error: unknown) {
+            notify(getErrorMessage(error, "Đã xảy ra lỗi khi xóa câu hỏi!"), false);
         } finally {
             setIsMutating(false);
         }

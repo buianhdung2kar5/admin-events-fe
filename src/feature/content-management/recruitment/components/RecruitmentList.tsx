@@ -33,10 +33,10 @@ export default function RecruitmentList({ filter }: RecruitmentListProps) {
     // Fetch danh sách
     const { data: response, isLoading, isError } = useQuery({
         queryKey: ["recruitments"],
-        queryFn: () => RecruitmentApi.getAllRecruitment(0, 200, ["createdTime,desc"]),
+        queryFn: () => RecruitmentApi.getAllRecruitment<RecruitmentItem>(0, 200, ["createdTime,desc"]),
     });
 
-    const allItems: RecruitmentItem[] = response?.object?.content || [];
+    const allItems: RecruitmentItem[] = response?.content || [];
     const totalElements = allItems.length;
 
     // FE filter by keyword + status from GroupFilter

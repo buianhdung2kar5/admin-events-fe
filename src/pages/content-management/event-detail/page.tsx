@@ -10,6 +10,12 @@ import EventDetailInfo from '../../../feature/content-management/event/component
 import EventDetailStats from '../../../feature/content-management/event/components/EventDetailStats';
 import EventDetailAnalytics from '../../../feature/content-management/event/components/EventDetailAnalytics';
 
+/** Backend CHƯA có API chi tiết sự kiện cho Admin — chỉ khai báo phần trang này đọc trực tiếp. */
+interface LegacyEventDetail {
+    categories?: { type: string; options?: { value: string }[] }[];
+    [key: string]: unknown;
+}
+
 export default function EventDetailPage() {
     const { eventId } = useParams<{ eventId: string }>();
     const navigate = useNavigate();
@@ -17,25 +23,25 @@ export default function EventDetailPage() {
 
     const { data: eventResponse, isLoading, isError } = useQuery({
         queryKey: ['event', eventId],
-        queryFn: () => EventsApi.getById(eventId!),
+        queryFn: () => EventsApi.getById<LegacyEventDetail>(eventId as string),
         enabled: !!eventId
     });
 
     const { data: statsResponse } = useQuery({
         queryKey: ['event-stats', eventId],
-        queryFn: () => EventsApi.getStatisticEvent(eventId!),
+        queryFn: () => EventsApi.getStatisticEvent(eventId as string),
         enabled: !!eventId && activeTab === "stats"
     });
 
     const { data: analyticsResponse } = useQuery({
         queryKey: ['event-analytics', eventId],
-        queryFn: () => EventsApi.getAnalyticsEvent(eventId!),
+        queryFn: () => EventsApi.getAnalyticsEvent(eventId as string),
         enabled: !!eventId && activeTab === "analytics"
     });
 
-    const event = eventResponse?.object;
-    const stats = statsResponse?.object;
-    const analytics = analyticsResponse?.object;
+    const event = eventResponse;
+    const stats = statsResponse;
+    const analytics = analyticsResponse;
 
     if (isLoading) {
         return (
@@ -60,9 +66,9 @@ export default function EventDetailPage() {
         );
     }
 
-    const locationCategory = event.categories?.find((c: any) => c.type === "LOCATION");
+    const locationCategory = event.categories?.find((c) => c.type === "LOCATION");
     const venue = locationCategory?.options?.[0]?.value || "Chưa cập nhật";
-    const styleCategory = event.categories?.find((c: any) => c.type === "STYLE");
+    const styleCategory = event.categories?.find((c) => c.type === "STYLE");
     const style = styleCategory?.options?.[0]?.value || "Sự kiện";
 
     return (

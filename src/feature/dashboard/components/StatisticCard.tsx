@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Users, Building2, Calendar, FileText, Briefcase } from "lucide-react";
-import UserApi from "../../../services/user-management/UserApi";
+import { AccountApi } from "../../../services/user-management/AccountApi";
 import { EventsApi } from "../../../services/events-management/EventsApi";
 import { NewApi } from "../../../services/news-management/NewApi";
 import { RecruitmentApi } from "../../../services/events-management/Recruitments";
@@ -55,8 +55,8 @@ function StatisticCard({ item }: { item: StatCard }) {
 }
 
 export default function StatisticsRow() {
-    const { data: usersData,    isLoading: l1 } = useQuery({ queryKey: ["dash_users"],      queryFn: () => UserApi.getAllUsers(0, 1) });
-    const { data: orgsData,     isLoading: l2 } = useQuery({ queryKey: ["dash_orgs"],       queryFn: () => UserApi.getAllUsers(0, 1, undefined, "createdTime", "desc", "ORGANIZATION") });
+    const { data: usersData,    isLoading: l1 } = useQuery({ queryKey: ["dash_users"],      queryFn: () => AccountApi.getAccounts({ page: 0, size: 1 }) });
+    const { data: orgsData,     isLoading: l2 } = useQuery({ queryKey: ["dash_orgs"],       queryFn: () => AccountApi.getAccounts({ role: "ORGANIZATION", page: 0, size: 1 }) });
     const { data: eventsData,   isLoading: l3 } = useQuery({ queryKey: ["dash_events"],     queryFn: () => EventsApi.getAll(0, 1) });
     const { data: newsData,     isLoading: l4 } = useQuery({ queryKey: ["dash_news"],       queryFn: () => NewApi.getAllNews(0, 1, ["createdTime,desc"]) });
     const { data: recruitData,  isLoading: l5 } = useQuery({ queryKey: ["dash_recruit"],   queryFn: () => RecruitmentApi.getAllRecruitment(0, 1, []) });
@@ -65,7 +65,7 @@ export default function StatisticsRow() {
     const cards: StatCard[] = [
         {
             title: "Tổng người dùng",
-            value: usersData?.object?.totalElements,
+            value: usersData?.totalElements,
             icon: <Users size={20} />,
             color: "cyan",
             sub: "Tất cả tài khoản",
@@ -73,7 +73,7 @@ export default function StatisticsRow() {
         },
         {
             title: "Tổ chức đối tác",
-            value: orgsData?.object?.totalElements,
+            value: orgsData?.totalElements,
             icon: <Building2 size={20} />,
             color: "purple",
             sub: "Doanh nghiệp, câu lạc bộ",
@@ -81,15 +81,15 @@ export default function StatisticsRow() {
         },
         {
             title: "Sự kiện",
-            value: eventsData?.object?.totalElements,
+            value: eventsData?.totalElements,
             icon: <Calendar size={20} />,
             color: "blue",
-            sub: `${pubEventsData?.object?.totalElements ?? 0} đang xuất bản`,
+            sub: `${pubEventsData?.totalElements ?? 0} đang xuất bản`,
             isLoading: l3,
         },
         {
             title: "Tin tức",
-            value: newsData?.object?.totalElements,
+            value: newsData?.totalElements,
             icon: <FileText size={20} />,
             color: "orange",
             sub: "Bài viết đã đăng",
@@ -97,7 +97,7 @@ export default function StatisticsRow() {
         },
         {
             title: "Đợt tuyển CTV",
-            value: recruitData?.object?.totalElements,
+            value: recruitData?.totalElements,
             icon: <Briefcase size={20} />,
             color: "teal",
             sub: "Tổng số đợt tuyển",

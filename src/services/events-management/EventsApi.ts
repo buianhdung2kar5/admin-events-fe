@@ -1,38 +1,43 @@
-import apiClient, { ApiResponse } from '../apiClient'
-export const EventsApi={
-    getAll(
-        page:number=0,
-        size:number=20,
-        keyword?:string,
-        categoryId?:number,
-        status?:string,
-        startDateFrom?:string,
-    ):Promise<ApiResponse> {
-        return apiClient.get<any,ApiResponse>('/events', { params: { keyword, categoryId, status, startDateFrom, page, size } });
+import { http } from "../apiClient";
+import type { LegacyPage } from "../../types/api.types";
+
+/**
+ * Backend CHƯA có API sự kiện cho Admin (/admin/events đang trong backlog) — giữ nguyên path cũ,
+ * chỉ khớp interceptor mới (trả thẳng `data`, lỗi ném ApiError). Kiểu dữ liệu do nơi gọi truyền vào.
+ */
+export const EventsApi = {
+    getAll<T = unknown>(
+        page: number = 0,
+        size: number = 20,
+        keyword?: string,
+        categoryId?: number,
+        status?: string,
+        startDateFrom?: string,
+    ): Promise<LegacyPage<T>> {
+        return http.get<LegacyPage<T>>("/events", { params: { keyword, categoryId, status, startDateFrom, page, size } });
     },
-    getStatisticEvent(id:string):Promise<ApiResponse> {
-        return apiClient.get<any,ApiResponse>(`/events/${id}/statistics`)
-        
+    getStatisticEvent<T = unknown>(id: string): Promise<T> {
+        return http.get<T>(`/events/${id}/statistics`);
     },
-    getAnalyticsEvent(id:string):Promise<ApiResponse> {
-        return apiClient.get<any,ApiResponse>(`/events/${id}/analytics`)
+    getAnalyticsEvent<T = unknown>(id: string): Promise<T> {
+        return http.get<T>(`/events/${id}/analytics`);
     },
-    getFeatureEvents():Promise<ApiResponse> {
-        return apiClient.get<any,ApiResponse>(`/events/featured`)
+    getFeatureEvents<T = unknown>(): Promise<T> {
+        return http.get<T>(`/events/featured`);
     },
-    updateEventById(id:string,data:any):Promise<ApiResponse> {
-        return apiClient.put<any,ApiResponse>(`/events/${id}`,data)
+    updateEventById(id: string, data: unknown): Promise<unknown> {
+        return http.put<unknown>(`/events/${id}`, data);
     },
-    publishEvent(id:string):Promise<ApiResponse> {
-        return apiClient.post<any,ApiResponse>(`/events/${id}/publish`)
+    publishEvent(id: string): Promise<unknown> {
+        return http.post<unknown>(`/events/${id}/publish`);
     },
-    createEvent(data:any):Promise<ApiResponse> {
-        return apiClient.post<any,ApiResponse>('/events',data)
+    createEvent(data: unknown): Promise<unknown> {
+        return http.post<unknown>("/events", data);
     },
-     deleteEventById(id:string):Promise<ApiResponse> {
-        return apiClient.delete<any,ApiResponse>(`/events/${id}`)
+    deleteEventById(id: string): Promise<void> {
+        return http.delete(`/events/${id}`);
     },
-    getById(id: string): Promise<ApiResponse> {
-        return apiClient.get<any, ApiResponse>(`/events/${id}`);
+    getById<T = unknown>(id: string): Promise<T> {
+        return http.get<T>(`/events/${id}`);
     },
-}
+};

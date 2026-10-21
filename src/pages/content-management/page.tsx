@@ -1,7 +1,5 @@
 import { useParams } from "react-router-dom";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { CategoryApi } from "../../services/events-management/CategoryApi";
 import GroupFilter from "../../feature/user-management/user/components/GroupFilter";
 
 import CategoryList from "../../feature/content-management/category/components/CategoryList";
@@ -26,22 +24,6 @@ export default function ContentManagement() {
     const [filter, setFilter] = useState<any>({});
     const [newsTagOptions, setNewsTagOptions] = useState<{ label: string; value: string }[] | undefined>(undefined);
 
-    // Fetch categories to get dynamic type options for GroupFilter
-    const { data: categoryData } = useQuery({
-        queryKey: ['categories'],
-        queryFn: () => CategoryApi.getAllCategory(0, 200),
-        enabled: type === 'category',
-    });
-
-    const categoryTypeOptions = type === 'category' ? [
-        { label: "Tất cả loại", value: "" },
-        ...Array.from(
-            new Map(
-                (categoryData?.object?.content || []).map((c: any) => [c.type, c.name])
-            ).entries()
-        ).map(([value, label]) => ({ label: label as string, value: value as string }))
-    ] : undefined;
-
     if (type === "attendance") {
         return <AttendanceList />;
     }
@@ -65,7 +47,7 @@ export default function ContentManagement() {
 
     const getDescription = () => {
         switch (type) {
-            case "category": return "Quản lý danh mục sự kiện và các tùy chọn";
+            case "category": return "Quản lý danh mục sự kiện theo phân cấp cha – con";
             case "event": return "Duyệt sự kiện từ sinh viên · Quản lý sự kiện từ doanh nghiệp & tổ chức";
             case "featured": return "Quản lý sự kiện hiển thị nổi bật trên trang chủ";
             case "news": return "Tạo, chỉnh sửa và phê duyệt tin tức";
@@ -129,7 +111,7 @@ export default function ContentManagement() {
             <div className="flex flex-col gap-6">
                 <GroupFilter
                     setFilter={setFilter}
-                    filter1Options={categoryTypeOptions ?? (type === 'news' ? newsTagOptions : undefined)}
+                    filter1Options={type === 'news' ? newsTagOptions : undefined}
                 />
                 <section className="flex flex-col gap-8">
                     {renderContent()}

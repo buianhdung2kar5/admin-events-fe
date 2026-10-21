@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { 
     X, FileText, CheckCircle2, ShieldAlert, Download, ExternalLink, FileClock
 } from 'lucide-react';
-import { VerificationDocument, getDocumentTypeLabel, getDocumentTypeStyle } from '../DTO/VerificationInterface';
+import { VerificationDocument, getDocumentTypeLabel, getDocumentTypeStyle, safeHttpsUrl, REJECT_NOTE_MAX_LENGTH } from '../DTO/VerificationInterface';
 
 interface DocDetailModalProps {
     doc: VerificationDocument;
     onClose: () => void;
-    onApprove: (id: number) => void;
-    onReject: (id: number, reason: string) => void;
+    onApprove: (id: string) => void;
+    onReject: (id: string, reason: string) => void;
 }
 
 export default function DocDetailModal({ doc, onClose, onApprove, onReject }: DocDetailModalProps) {
@@ -25,7 +26,9 @@ export default function DocDetailModal({ doc, onClose, onApprove, onReject }: Do
     const typeLabel = getDocumentTypeLabel(doc.documentType);
     const typeStyle = getDocumentTypeStyle(doc.documentType);
 
-    const isImage = doc.fileUrl.match(/\.(jpeg|jpg|gif|png)$/) != null;
+    const fileUrl = safeHttpsUrl(doc.fileUrl);
+    const isImage = fileUrl?.match(/\.(jpeg|jpg|gif|png)$/i) != null;
+    const fileName = doc.originalFileName ?? "Tài liệu xác minh";
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -41,10 +44,10 @@ export default function DocDetailModal({ doc, onClose, onApprove, onReject }: Do
                             </div>
                             <div>
                                 <h3 className="font-bold text-gray-800 text-sm">Tài liệu đính kèm</h3>
-                                <p className="text-xs text-gray-400">{doc.originalFileName}</p>
+                                <p className="text-xs text-gray-400">{fileName}</p>
                             </div>
                         </div>
-                        <a href={doc.fileUrl} target="_blank" rel="noreferrer" 
+                        <a href={fileUrl} target="_blank" rel="noopener noreferrer" 
                             className="p-2 text-gray-400 hover:text-[#0092B8] hover:bg-blue-50 rounded-lg transition-colors">
                             <Download size={18} />
                         </a>
@@ -53,7 +56,7 @@ export default function DocDetailModal({ doc, onClose, onApprove, onReject }: Do
                     <div className="flex-1 relative flex items-center justify-center p-8 overflow-hidden">
                         {isImage ? (
                             <img 
-                                src={doc.fileUrl} 
+                                src={fileUrl} 
                                 alt="Document"
                                 className="max-w-full max-h-full object-contain rounded-lg shadow-sm"
                             />
@@ -66,7 +69,7 @@ export default function DocDetailModal({ doc, onClose, onApprove, onReject }: Do
                                     <p className="text-lg font-bold text-gray-600">Định dạng file không hỗ trợ xem trực tiếp</p>
                                     <p className="text-sm text-gray-400 mt-1">Vui lòng tải xuống hoặc xem ở tab mới để kiểm tra nội dung</p>
                                 </div>
-                                <a href={doc.fileUrl} target="_blank" rel="noreferrer" 
+                                <a href={fileUrl} target="_blank" rel="noopener noreferrer" 
                                     className="flex items-center gap-2 px-6 py-3 bg-[#0092B8] text-white rounded-xl font-bold hover:bg-[#007a99] transition-all shadow-md">
                                     <ExternalLink size={18} /> Mở trong tab mới
                                 </a>
@@ -98,12 +101,11 @@ export default function DocDetailModal({ doc, onClose, onApprove, onReject }: Do
                         <div>
                             <p className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Thông tin người gửi</p>
                             <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100/50">
-                                <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-[#0092B8] font-black text-xl">
-                                    {doc.userSummary?.userId}
-                                </div>
-                                <div>
-                                    <p className="font-bold text-sm text-gray-800">{doc.userSummary?.fullName || `User #${doc.userSummary?.userId}`}</p>
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight mt-0.5">Mã người dùng hệ thống</p>
+                                <div className="min-w-0">
+                                    <Link to={`/user-management/organization/${doc.userId}`} className="font-bold text-sm text-[#0092B8] hover:underline">
+                                        Xem hồ sơ tổ chức
+                                    </Link>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight mt-0.5 truncate">UID: {doc.userId}</p>
                                 </div>
                             </div>
                         </div>
@@ -114,7 +116,7 @@ export default function DocDetailModal({ doc, onClose, onApprove, onReject }: Do
                             <div className="flex flex-col gap-4 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Tên file</p>
-                                    <p className="text-sm font-bold text-gray-800">{doc.originalFileName}</p>
+                                    <p className="text-sm font-bold text-gray-800">{fileName}</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -125,7 +127,7 @@ export default function DocDetailModal({ doc, onClose, onApprove, onReject }: Do
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Ngày gửi</p>
-                                        <p className="text-sm font-bold text-gray-800">{new Date(doc.createdTime).toLocaleDateString("vi-VN")}</p>
+                                        <p className="text-sm font-bold text-gray-800">{new Date(doc.createdAt).toLocaleDateString("vi-VN")}</p>
                                     </div>
                                 </div>
                             </div>
@@ -159,6 +161,7 @@ export default function DocDetailModal({ doc, onClose, onApprove, onReject }: Do
                                     placeholder="Nhập lý do từ chối hồ sơ này..."
                                     value={rejectReason}
                                     onChange={(e) => setRejectReason(e.target.value)}
+                                    maxLength={REJECT_NOTE_MAX_LENGTH}
                                     className="w-full h-24 p-3 text-sm border border-red-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 resize-none font-medium"
                                 />
                                 <div className="flex gap-2">

@@ -1,21 +1,17 @@
-import apiClient, { ApiResponse } from "../apiClient";
+import { http } from "../apiClient";
+import type { LegacyPage } from "../../types/api.types";
 
-export const SystemManagementApi= {
-
-    getActivityAccount(
-        page:number=0,
-        size:number=20,
-        sort:string[],        
-    ){
-        return apiClient.get('/admin/users/activity', {params: {page,size,sort}})
+/**
+ * Backend CHƯA có các API này. Khóa/mở khóa tài khoản hàng loạt đã chuyển sang AccountApi.blockMany / unlockMany.
+ */
+export const SystemManagementApi = {
+    getActivityAccount<T = unknown>(page: number = 0, size: number = 20, sort: string[] = []): Promise<LegacyPage<T>> {
+        return http.get<LegacyPage<T>>("/admin/users/activity", { params: { page, size, sort } });
     },
-
-    getHeapStatistics(){
-        return apiClient.get("/admin/statistics")
+    getHeapStatistics<T = unknown>(): Promise<T> {
+        return http.get<T>("/admin/statistics");
     },
-
-    bulkAction(data:any): Promise<ApiResponse>{
-        return apiClient.post<any, ApiResponse>("/admin/bulk-action",data)
-    }
-
-}
+    bulkAction(data: unknown): Promise<unknown> {
+        return http.post<unknown>("/admin/bulk-action", data);
+    },
+};

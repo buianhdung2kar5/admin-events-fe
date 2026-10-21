@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "homepage": "https://events.net.vn/",
+  "proxy": "http://localhost:8080",
   "dependencies": {
     "@tanstack/react-query": "^5.100.6",
     "@tanstack/react-query-devtools": "^5.100.6",
@@ -21,10 +22,11 @@
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.14.0",
     "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "zod": "^3.23.8"
   },
   "scripts": {
-    "start": "react-scripts start -p 3000/admin-events-fe",
+    "start": "react-scripts start -p 3001/admin-events-fe",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",

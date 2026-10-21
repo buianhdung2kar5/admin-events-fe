@@ -1,43 +1,4 @@
-export interface OrganizationResponse {
-    userId: number;
-    firebaseUid: string;
-    email: string;
-    phoneNumber: string;
-    role: string;
-    status: string;
-    currentCoin: number;
-    createdTime: string;
-    userProfile: {
-        userId: number;
-        fullName: string;
-        gender: string | null;
-        dateOfBirth: string | null;
-        studentCode: string | null;
-        university: string | null;
-        faculty: string | null;
-        major: string | null;
-        avatarUrl: string | null;
-        remainingFreePortfolios: number;
-    };
-    organizationProfile: {
-        userId: number;
-        organizationName: string;
-        description: string;
-        organizationType: string;
-        logoUrl: string;
-        verificationStatus: string;
-        verifiedTime: string | null;
-        address: string;
-    };
-    verificationDocuments: {
-        verificationDocumentId: number;
-        userId: number;
-        documentType: string;
-        fileUrl: string;
-        originalFileName: string;
-        createdTime: string;
-    }[];
-}
+/** Kiểu dữ liệu chi tiết tổ chức: dùng AccountDetail trong src/types/account.types.ts. */
 
 export const getOrgTypeStyles = (type: string) => {
     switch (type?.toUpperCase()) {

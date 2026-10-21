@@ -41,9 +41,9 @@ export default function EventList({ filter }: EventListProps) {
         },
     });
 
-    const eventsList = eventData?.object?.content || [];
-    const totalPages = eventData?.object?.totalPages || 1;
-    const totalElements = eventData?.object?.totalElements || 0;
+    const eventsList = eventData?.content || [];
+    const totalPages = eventData?.totalPages || 1;
+    const totalElements = eventData?.totalElements || 0;
 
     const toggleSelectAll = () => {
         if (selectedIds.length === eventsList.length && eventsList.length > 0) {

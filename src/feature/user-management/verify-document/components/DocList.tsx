@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
-import { 
-    FileText, Eye, CheckCircle2, ShieldAlert, FileClock, 
-    CheckSquare2, Trash2, X, Loader2
+import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import {
+    FileText, Eye, CheckCircle2, FileClock,
+    CheckSquare2, X, Loader2
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { VerificationDocumentApi } from '../../../../services/user-management/DocumentApi';
-import { 
-    VerificationDocument, VerificationDocumentResponse, 
-    getDocumentTypeLabel, getDocumentTypeStyle 
+import { VerificationDocumentApi, PENDING_DOCS_QUERY_KEY } from '../../../../services/user-management/DocumentApi';
+import { getErrorMessage } from '../../../../services/apiError';
+import {
+    VerificationDocument,
+    getDocumentTypeLabel, getDocumentTypeStyle, safeHttpsUrl
 } from '../DTO/VerificationInterface';
 import DocDetailModal from './DocDetailModal';
 import Toast from '../../../../components/common/Toast';
@@ -25,53 +27,64 @@ interface DocListProps {
 
 export default function DocList({ filter }: DocListProps) {
     const [currentPage, setCurrentPage] = useState(1);
-    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [detailDoc, setDetailDoc] = useState<VerificationDocument | null>(null);
     const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
     
     const queryClient = useQueryClient();
 
-    const { data: response, isLoading, isError } = useQuery({
-        queryKey: ['verification-documents', currentPage, filter],
-        queryFn: async () => {
-            const res = await VerificationDocumentApi.getAllDocumentVerify(
-                currentPage - 1,
-                PAGE_SIZE,
-                ['createdTime,desc']
-            );
-            return res;
-        }
+    // Backend trả toàn bộ tài liệu PENDING (không phân trang) → tìm kiếm & phân trang ở client
+    const { data: allDocuments = [], isLoading, isError } = useQuery({
+        queryKey: PENDING_DOCS_QUERY_KEY,
+        queryFn: VerificationDocumentApi.getPendingDocuments,
     });
 
-    const documents = response?.object?.content || [];
-    const totalElements = response?.object?.totalElements || 0;
-    const totalPages = response?.object?.totalPages || 1;
+    const filtered = useMemo(() => {
+        const keyword = filter?.search?.trim().toLowerCase();
+        if (!keyword) return allDocuments;
+        return allDocuments.filter((d) =>
+            (d.originalFileName ?? "").toLowerCase().includes(keyword) || d.userId.toLowerCase().includes(keyword));
+    }, [allDocuments, filter?.search]);
+
+    const totalElements = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalElements / PAGE_SIZE));
+    const documents = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
     useEffect(() => { setCurrentPage(1); }, [filter]);
 
     // ── Actions ─────────────────────────────────────────────────────
-    const handleApprove = async (id: number) => {
+    const refreshDocuments = () => {
+        queryClient.invalidateQueries({ queryKey: ['verification-documents'] });
+        queryClient.invalidateQueries({ queryKey: ['doc_stats_dashboard'] });
+    };
+
+    const handleApprove = async (id: string) => {
         try {
-            await VerificationDocumentApi.approvedDocumentVerify(id);
+            await VerificationDocumentApi.approve(id);
             setToast({ msg: "Phê duyệt hồ sơ thành công!", ok: true });
-            queryClient.invalidateQueries({ queryKey: ['verification-documents'] });
+            refreshDocuments();
             setDetailDoc(null);
-        } catch (error: any) {
-            setToast({ msg: error.message || "Không thể phê duyệt hồ sơ", ok: false });
+        } catch (error: unknown) {
+            setToast({ msg: getErrorMessage(error, "Không thể phê duyệt hồ sơ"), ok: false });
         }
     };
 
-    const handleReject = async (id: number, reason: string) => {
-        // TODO: call reject API if exists, for now just a placeholder
-        setToast({ msg: `Đã từ chối hồ sơ vì: ${reason}`, ok: true });
-        setDetailDoc(null);
+    const handleReject = async (id: string, reason: string) => {
+        try {
+            await VerificationDocumentApi.reject(id, reason.trim());
+            setToast({ msg: "Đã từ chối hồ sơ.", ok: true });
+            refreshDocuments();
+            setDetailDoc(null);
+        } catch (error: unknown) {
+            setToast({ msg: getErrorMessage(error, "Không thể từ chối hồ sơ"), ok: false });
+        }
     };
 
-    const toggleSelect = (id: number) => 
+    const toggleSelect = (id: string) => 
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     
     const toggleSelectAll = () => 
-        setSelectedIds(selectedIds.length === documents.length ? [] : documents.map((d:any) => d.verificationDocumentId));
+        setSelectedIds(selectedIds.length === documents.length ? [] : documents.map((d) => d.verificationDocumentId));
 
     if (isError) return <div className="p-12 text-center text-red-500 bg-white rounded-3xl border border-red-100 font-medium">Lỗi khi tải danh sách hồ sơ xác thực!</div>;
 
@@ -129,7 +142,7 @@ export default function DocList({ filter }: DocListProps) {
                             </tr>
                         </thead>
                         <tbody>
-                            {documents.length > 0 ? documents.map((doc:any) => {
+                            {documents.length > 0 ? documents.map((doc: VerificationDocument) => {
                                 const typeLabel = getDocumentTypeLabel(doc.documentType);
                                 const typeStyle = getDocumentTypeStyle(doc.documentType);
                                 return (
@@ -146,8 +159,10 @@ export default function DocList({ filter }: DocListProps) {
                                                     <FileText size={18} />
                                                 </div>
                                                 <div className="flex flex-col min-w-0">
-                                                    <span className="text-sm font-bold text-gray-800 max-w-[220px] truncate block">{doc.originalFileName}</span>
-                                                    <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="text-[10px] text-blue-500 hover:underline font-bold truncate block">Xem file gốc</a>
+                                                    <span className="text-sm font-bold text-gray-800 max-w-[220px] truncate block">{doc.originalFileName ?? "Tài liệu xác minh"}</span>
+                                                    {safeHttpsUrl(doc.fileUrl) && (
+                                                        <a href={safeHttpsUrl(doc.fileUrl)} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline font-bold truncate block">Xem file gốc</a>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>
@@ -158,12 +173,14 @@ export default function DocList({ filter }: DocListProps) {
                                         </td>
                                         <td className="px-5 py-4">
                                             <div className="flex flex-col min-w-0">
-                                                <span className="text-sm font-bold text-gray-700 truncate leading-tight">{doc.userSummary?.fullName || `User #${doc.userSummary?.userId}`}</span>
-                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">UID: {doc.userSummary?.userId}</span>
+                                                <Link to={`/user-management/organization/${doc.userId}`} className="text-sm font-bold text-[#0092B8] hover:underline truncate leading-tight">
+                                                    Xem tổ chức
+                                                </Link>
+                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight truncate max-w-[160px]">UID: {doc.userId}</span>
                                             </div>
                                         </td>
                                         <td className="px-5 py-4">
-                                            <span className="text-sm text-gray-500 font-medium">{new Date(doc.createdTime).toLocaleDateString("vi-VN")}</span>
+                                            <span className="text-sm text-gray-500 font-medium">{new Date(doc.createdAt).toLocaleDateString("vi-VN")}</span>
                                         </td>
                                         <td className="px-5 py-4 text-center">
                                             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 text-[10px] font-black uppercase rounded-xl whitespace-nowrap">

@@ -1,14 +1,14 @@
 import { ShieldCheck, FileClock, FileCheck, ShieldAlert } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { VerificationDocumentApi } from "../../../services/user-management/DocumentApi";
+import { VerificationDocumentApi, PENDING_DOCS_QUERY_KEY } from "../../../services/user-management/DocumentApi";
 import { ReportsApi } from "../../../services/user-management/ReportsApi";
 import { RecruitmentApi } from "../../../services/events-management/Recruitments";
 import { EventsApi } from "../../../services/events-management/EventsApi";
 
 export default function EmergencyCard() {
     const { data: pendingDocs,       isLoading: l1 } = useQuery({
-        queryKey: ["dashboard_pending_docs"],
-        queryFn: () => VerificationDocumentApi.getAllDocumentVerify(0, 1, [], "PENDING"),
+        queryKey: PENDING_DOCS_QUERY_KEY,
+        queryFn: VerificationDocumentApi.getPendingDocuments,
     });
     const { data: pendingReports,    isLoading: l2 } = useQuery({
         queryKey: ["dashboard_pending_reports"],
@@ -27,7 +27,7 @@ export default function EmergencyCard() {
         {
             id: "authen",
             title: "Xác thực tài liệu chờ duyệt",
-            number: pendingDocs?.object?.totalElements ?? 0,
+            number: pendingDocs?.length ?? 0,
             icon: ShieldCheck,
             colorText: "#0092B8",
             colorBorder: "#0092B8",
@@ -38,7 +38,7 @@ export default function EmergencyCard() {
         {
             id: "report",
             title: "Báo cáo chưa xử lý",
-            number: pendingReports?.data?.object?.totalElements ?? 0,
+            number: pendingReports?.totalElements ?? 0,
             icon: ShieldAlert,
             colorText: "#E7000B",
             colorBorder: "#FBBFC2",
@@ -49,7 +49,7 @@ export default function EmergencyCard() {
         {
             id: "draft_events",
             title: "Sự kiện đang chờ duyệt",
-            number: draftEvents?.object?.totalElements ?? 0,
+            number: draftEvents?.totalElements ?? 0,
             icon: FileClock,
             colorText: "#D08700",
             colorBorder: "#FFE08A",
@@ -60,7 +60,7 @@ export default function EmergencyCard() {
         {
             id: "open_recruitments",
             title: "Đợt tuyển CTV đang mở",
-            number: openRecruitments?.object?.totalElements ?? 0,
+            number: openRecruitments?.totalElements ?? 0,
             icon: FileCheck,
             colorText: "#6B7280",
             colorBorder: "#D1D5DB",

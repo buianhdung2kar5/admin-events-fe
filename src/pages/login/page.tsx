@@ -2,6 +2,7 @@ import { useState, FormEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { Eye, EyeOff, Lock, Mail, AlertCircle, Loader2 } from "lucide-react";
+import { getErrorMessage } from "../../services/apiError";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -28,8 +29,8 @@ export default function LoginPage() {
     try {
       await login(email.trim(), password);
       navigate(from, { replace: true });
-    } catch (err: any) {
-      setError(err?.message || "Đăng nhập thất bại. Vui lòng thử lại.");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Đăng nhập thất bại. Vui lòng thử lại."));
     } finally {
       setLoading(false);
     }

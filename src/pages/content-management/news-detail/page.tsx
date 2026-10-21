@@ -5,6 +5,13 @@ import { useQuery } from '@tanstack/react-query';
 import { NewApi, NewsItem } from '../../../services/news-management/NewApi';
 import { EventsApi } from '../../../services/events-management/EventsApi';
 
+/** Backend CHƯA có API sự kiện cho Admin — chỉ khai báo các field trang này hiển thị. */
+interface LinkedEvent {
+    bannerUrl?: string;
+    eventTitle?: string;
+    organizationName?: string;
+}
+
 export default function NewsDetailPage() {
     const { newsId } = useParams<{ newsId: string }>();
     const navigate = useNavigate();
@@ -15,16 +22,16 @@ export default function NewsDetailPage() {
         enabled: !!newsId
     });
 
-    const news = newsRes?.object as NewsItem | undefined;
+    const news: NewsItem | undefined = newsRes;
 
     // Fetch linked event if exists
     const { data: eventRes } = useQuery({
         queryKey: ['eventDetail', news?.targetId],
-        queryFn: () => EventsApi.getById(String(news?.targetId)),
+        queryFn: () => EventsApi.getById<LinkedEvent>(String(news?.targetId)),
         enabled: !!(news?.targetType === 'EVENT' && news?.targetId)
     });
 
-    const linkedEvent = eventRes?.object;
+    const linkedEvent = eventRes;
 
     if (isLoading) {
         return (

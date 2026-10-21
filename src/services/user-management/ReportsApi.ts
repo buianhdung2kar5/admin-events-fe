@@ -1,20 +1,15 @@
-import apiClient from '../apiClient'
-export const ReportsApi={
-    getAllReports(page: number, size: number, sort?: string, status?: string){
-        return apiClient.get('/reports', {params:{
-            page: page,
-            size: size,
-            sort: sort,
-            status: status
-        }})
-    },
+import { http } from "../apiClient";
+import type { LegacyPage } from "../../types/api.types";
 
-    getReportById(id:number){
-        return apiClient.get(`/reports/${id}`)
+/** Backend CHƯA có API báo cáo vi phạm — giữ nguyên path cũ, chỉ khớp interceptor mới. */
+export const ReportsApi = {
+    getAllReports<T = unknown>(page: number, size: number, sort?: string, status?: string): Promise<LegacyPage<T>> {
+        return http.get<LegacyPage<T>>("/reports", { params: { page, size, sort, status } });
     },
-
-    resolveReport(id:number){
-        return apiClient.put(`/reports/${id}/resolve`)
-    }
-    
-}
+    getReportById<T = unknown>(id: number): Promise<T> {
+        return http.get<T>(`/reports/${id}`);
+    },
+    resolveReport(id: number): Promise<unknown> {
+        return http.put<unknown>(`/reports/${id}/resolve`);
+    },
+};

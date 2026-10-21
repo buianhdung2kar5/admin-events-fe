@@ -1,13 +1,15 @@
-import apiClient, { ApiResponse } from '../apiClient'
+import { http } from "../apiClient";
+import type { LegacyPage } from "../../types/api.types";
 
+/** Backend CHƯA có API báo cáo vi phạm — giữ nguyên path cũ, chỉ khớp interceptor mới. */
 export const ReportsManagement = {
-    getAllReports(page?: number, size?: number, sort?: string[]): Promise<ApiResponse> {
-        return apiClient.get<any, ApiResponse>('/reports', { params: { page, size, sort } })
+    getAllReports<T = unknown>(page?: number, size?: number, sort?: string[]): Promise<LegacyPage<T>> {
+        return http.get<LegacyPage<T>>("/reports", { params: { page, size, sort } });
     },
-    getReportById(id:number):Promise<ApiResponse>{
-        return apiClient.get<any, ApiResponse>(`/reports/${id}`)
+    getReportById<T = unknown>(id: number): Promise<T> {
+        return http.get<T>(`/reports/${id}`);
     },
-    resolveReport(id:number):Promise<ApiResponse>{
-        return apiClient.post<any, ApiResponse>(`/reports/${id}/resolve`)
-    }
-}
+    resolveReport(id: number): Promise<unknown> {
+        return http.post<unknown>(`/reports/${id}/resolve`);
+    },
+};

@@ -3,18 +3,27 @@ import { FileText, X, ChevronRight, Search, UploadCloud, Loader2 } from 'lucide-
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { EventsApi } from '../../../../services/events-management/EventsApi';
 import { UploadService } from '../../../../services/UploadService';
-import { NewApi } from '../../../../services/news-management/NewApi';
+import { NewApi, type createNewsData } from '../../../../services/news-management/NewApi';
 import Toast from '../../../../components/common/Toast';
+import { getErrorMessage } from "../../../../services/apiError";
 
 interface NewsFormModalProps {
     onClose: () => void;
     onSaveSuccess: () => void;
 }
 
+/** Backend CHƯA có API sự kiện cho Admin — chỉ khai báo các field bộ chọn sự kiện dùng. */
+interface PickerEvent {
+    eventId: number;
+    eventTitle?: string;
+    [key: string]: unknown;
+}
+
 export default function NewsFormModal({ onClose, onSaveSuccess }: NewsFormModalProps) {
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
-    const [bannerFileId, setBannerFileId] = useState<number | null>(null);
+    // Upload trước qua POST /files rồi gửi URL (quy ước chung của backend)
+    const [bannerUrl, setBannerUrl] = useState<string | null>(null);
     const [tag, setTag] = useState("");
     const [targetType, setTargetType] = useState<string>("NONE");
     const [targetId, setTargetId] = useState<number | null>(null);
@@ -30,23 +39,17 @@ export default function NewsFormModal({ onClose, onSaveSuccess }: NewsFormModalP
     // Load events for picker
     const { data: eventsData, isLoading: isLoadingEvents } = useQuery({
         queryKey: ["eventsForPicker", eventSearch],
-        queryFn: () => EventsApi.getAll(0, 50),
+        queryFn: () => EventsApi.getAll<PickerEvent>(0, 50),
         enabled: showEventPicker
     });
 
-    const events = eventsData?.object?.content || [];
+    const events = eventsData?.content || [];
 
     const createMutation = useMutation({
-        mutationFn: (data: any) => NewApi.createNews(data),
-        onSuccess: (res) => {
-            if (res.statusCode === 200 || res.statusCode === 201) {
-                onSaveSuccess();
-            } else {
-                setToast({ msg: res.message || "Đã có lỗi xảy ra", ok: false });
-            }
-        },
-        onError: (err: any) => {
-            setToast({ msg: err.message || "Lỗi kết nối server", ok: false });
+        mutationFn: (data: createNewsData) => NewApi.createNews(data),
+        onSuccess: () => onSaveSuccess(),
+        onError: (err: unknown) => {
+            setToast({ msg: getErrorMessage(err, "Lỗi kết nối server"), ok: false });
         }
     });
 
@@ -58,14 +61,10 @@ export default function NewsFormModal({ onClose, onSaveSuccess }: NewsFormModalP
         setBannerPreview(URL.createObjectURL(file));
 
         try {
-            const res = await UploadService.uploadImage(file, "NEWS_BANNER");
-            if (res.statusCode === 200 && res.object) {
-                setBannerFileId(res.object.fileId);
-            } else {
-                setToast({ msg: "Upload ảnh thất bại", ok: false });
-            }
-        } catch (error) {
-            setToast({ msg: "Lỗi khi upload ảnh", ok: false });
+            const res = await UploadService.uploadImage(file, "news");
+            setBannerUrl(res.fileUrl);
+        } catch (error: unknown) {
+            setToast({ msg: getErrorMessage(error, "Lỗi khi upload ảnh"), ok: false });
         } finally {
             setIsUploading(false);
         }
@@ -76,7 +75,7 @@ export default function NewsFormModal({ onClose, onSaveSuccess }: NewsFormModalP
             setToast({ msg: "Vui lòng điền đầy đủ tiêu đề và nội dung", ok: false });
             return;
         }
-        if (!bannerFileId) {
+        if (!bannerUrl) {
             setToast({ msg: "Vui lòng tải lên ảnh banner", ok: false });
             return;
         }
@@ -84,7 +83,7 @@ export default function NewsFormModal({ onClose, onSaveSuccess }: NewsFormModalP
         createMutation.mutate({
             title: title.trim(),
             content: content.trim(),
-            bannerId: bannerFileId,
+            banner: bannerUrl,
             tag: tag.trim(),
             targetType,
             targetId: targetType === "EVENT" ? targetId : null,
@@ -217,7 +216,7 @@ export default function NewsFormModal({ onClose, onSaveSuccess }: NewsFormModalP
                                     >
                                         <span className="truncate font-medium">
                                             {targetId
-                                                ? (events.find((e: any) => e.eventId === targetId)?.eventTitle || `ID: ${targetId}`)
+                                                ? (events.find((e) => e.eventId === targetId)?.eventTitle || `ID: ${targetId}`)
                                                 : "Tìm và chọn sự kiện..."}
                                         </span>
                                         <ChevronRight size={16} className="flex-shrink-0" />
@@ -263,7 +262,7 @@ export default function NewsFormModal({ onClose, onSaveSuccess }: NewsFormModalP
                         </button>
                         <button
                             onClick={handleSubmit}
-                            disabled={isPending || !bannerFileId}
+                            disabled={isPending || !bannerUrl}
                             className="flex-1 py-3.5 rounded-lg text-sm font-bold text-white bg-[#0092B8] hover:bg-[#007a99] disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                         >
                             {isPending && <Loader2 size={18} className="animate-spin" />}

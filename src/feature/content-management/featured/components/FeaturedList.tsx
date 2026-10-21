@@ -6,6 +6,7 @@ import { FeaturedEventData } from "../data/FeaturedMockData";
 import FeaturedFormModal from "./FeaturedFormModal";
 import Toast from "../../../../components/common/Toast";
 import { FeaturedApi } from "../../../../services/events-management/FeaturedEventsApi";
+import { getErrorMessage } from "../../../../services/apiError";
 
 interface FeaturedListProps {
     filter?: { search?: string; filter1?: string; };
@@ -31,12 +32,12 @@ export default function FeaturedList({ filter }: FeaturedListProps) {
     const { data: eventData, isLoading, isError } = useQuery({
         queryKey: ["featuredEvents"],
         queryFn: async () => {
-            const response = await FeaturedApi.getAllFeaturedEvents(0, 200);
+            const response = await FeaturedApi.getAllFeaturedEvents<FeaturedEventData>(0, 200);
             return response;
         },
     });
 
-    const allItems: FeaturedEventData[] = eventData?.object?.content || [];
+    const allItems: FeaturedEventData[] = eventData?.content || [];
 
     // Client-side filtering
     const getStatus = (startDate: string, endDate: string) => {
@@ -108,16 +109,12 @@ export default function FeaturedList({ filter }: FeaturedListProps) {
     const handleDelete = async (id: number) => {
         if (!window.confirm("Bạn có chắc chắn muốn xóa sự kiện nổi bật này?")) return;
         try {
-            const res = await FeaturedApi.deleteFeaturedEvent([id]);
-            if (res.statusCode === 200 || res.statusCode === 204) {
-                setToast({ msg: "Xóa sự kiện nổi bật thành công", ok: true });
-                queryClient.invalidateQueries({ queryKey: ["featuredEvents"] });
-                setSelectedIds(prev => prev.filter(i => i !== id));
-            } else {
-                setToast({ msg: res.message || "Xóa thất bại", ok: false });
-            }
-        } catch (error: any) {
-            setToast({ msg: error.message || "Có lỗi xảy ra", ok: false });
+            await FeaturedApi.deleteFeaturedEvent([id]);
+            setToast({ msg: "Xóa sự kiện nổi bật thành công", ok: true });
+            queryClient.invalidateQueries({ queryKey: ["featuredEvents"] });
+            setSelectedIds(prev => prev.filter(i => i !== id));
+        } catch (error: unknown) {
+            setToast({ msg: getErrorMessage(error, "Có lỗi xảy ra"), ok: false });
         }
         setTimeout(() => setToast(null), 3000);
     };
@@ -125,16 +122,12 @@ export default function FeaturedList({ filter }: FeaturedListProps) {
     const handleBulkDelete = async () => {
         if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} sự kiện nổi bật?`)) return;
         try {
-            const res = await FeaturedApi.deleteFeaturedEvent(selectedIds);
-            if (res.statusCode === 200 || res.statusCode === 204) {
-                setToast({ msg: "Xóa hàng loạt sự kiện nổi bật thành công", ok: true });
-                queryClient.invalidateQueries({ queryKey: ["featuredEvents"] });
-                setSelectedIds([]);
-            } else {
-                setToast({ msg: res.message || "Xóa thất bại", ok: false });
-            }
-        } catch (error: any) {
-            setToast({ msg: error.message || "Có lỗi xảy ra", ok: false });
+            await FeaturedApi.deleteFeaturedEvent(selectedIds);
+            setToast({ msg: "Xóa hàng loạt sự kiện nổi bật thành công", ok: true });
+            queryClient.invalidateQueries({ queryKey: ["featuredEvents"] });
+            setSelectedIds([]);
+        } catch (error: unknown) {
+            setToast({ msg: getErrorMessage(error, "Có lỗi xảy ra"), ok: false });
         }
         setTimeout(() => setToast(null), 3000);
     };

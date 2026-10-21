@@ -1,58 +1,48 @@
-export interface CategoryOptionInterface {
-    categoryOptionId: number;
-    categoryId: number;
-    value: string;
-}
+/**
+ * Backend lưu danh mục dạng cây cha – con, không giới hạn số tầng. Id là UUID (string).
+ */
 
-export interface CategoryInterface {
-    categoryId: number;
+/** Khớp backend CategoryResponse (GET /public/categories — danh sách phẳng). */
+export interface CategoryResponse {
+    categoryId: string;
     name: string;
-    type: string;
-    options: CategoryOptionInterface[];
+    parentCategoryId: string | null;
+    createdAt: string;
+    updatedAt: string;
 }
 
-export interface CategoryResponseInterface {
-    errorCode: number;
-    statusCode: number;
-    object: {
-        content: CategoryInterface[];
-        pageable: {
-            pageNumber: number;
-            pageSize: number;
-            sort: {
-                unsorted: boolean;
-                sorted: boolean;
-                empty: boolean;
-            };
-            offset: number;
-            unpaged: boolean;
-            paged: boolean;
-        };
-        totalPages: number;
-        totalElements: number;
-        last: boolean;
-        numberOfElements: number;
-        size: number;
-        number: number;
-        sort: {
-            unsorted: boolean;
-            sorted: boolean;
-            empty: boolean;
-        };
-        first: boolean;
-        empty: boolean;
-    };
+/** Nút cây do FE tự dựng từ danh sách phẳng (backend không còn API cây). */
+export interface CategoryTreeNode {
+    categoryId: string;
+    name: string;
+    parentCategoryId: string | null;
+    createdAt: string;
+    children: CategoryTreeNode[];
 }
 
-export interface SingleCategoryResponseInterface {
-    errorCode: number;
-    statusCode: number;
-    object: CategoryInterface;
+/** Khớp backend CategoryUpsertRequest (POST/PUT /admin/categories). */
+export interface CategoryUpsertRequest {
+    name: string;
+    parentCategoryId: string | null;
 }
 
-export const CategoryCardData = [
-    { title: "Tổng danh mục", value: 6 },
-    { title: "Có options",    value: 4, color: "text-green-500" },
-    { title: "Chưa có options", value: 2, color: "text-amber-500" },
-    { title: "Tổng options",  value: 12, color: "text-blue-600" },
-];
+/** Một nút đã làm phẳng để hiển thị (select chọn cha, thống kê). */
+export interface FlatCategory {
+    categoryId: string;
+    name: string;
+    parentCategoryId: string | null;
+    depth: number;
+    /** "Cha › Con › Cháu" */
+    path: string;
+    childCount: number;
+}
+
+export interface CategoryStats {
+    total: number;
+    roots: number;
+    children: number;
+    maxDepth: number;
+}
+
+/** Độ dài tên tối đa — khớp @Size(max = 100) của CategoryUpsertRequest. */
+export const CATEGORY_NAME_MAX_LENGTH = 100;

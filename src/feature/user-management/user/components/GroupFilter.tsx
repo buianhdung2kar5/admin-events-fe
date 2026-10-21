@@ -95,8 +95,7 @@ const FILTER_CONFIG: any = {
             options: [
                 { label: "Tất cả trạng thái", value: "" },
                 { label: "Hoạt động", value: "ACTIVE" },
-                { label: "Chờ duyệt", value: "PENDING" },
-                { label: "Bị khóa", value: "DISABLED" }
+                { label: "Bị khóa", value: "BLOCKED" }
             ] 
         }
     },
@@ -167,18 +166,9 @@ const FILTER_CONFIG: any = {
         filter2: null,
         showDate: false
     },
+    // Backend không có "type" cho danh mục → chỉ tìm theo tên
     "category": {
-        filter1: {
-            label: "Loại danh mục",
-            options: [
-                { label: "Tất cả loại", value: "" },
-                { label: "Trường học", value: "SCHOOL" },
-                { label: "Lĩnh vực", value: "FIELD" },
-                { label: "Địa điểm", value: "LOCATION" },
-                { label: "Hình thức", value: "STYLE" },
-                { label: "Mức giá", value: "PRICE" }
-            ]
-        },
+        filter1: null,
         filter2: null
     }
 };
@@ -258,12 +248,14 @@ export default function GroupFilter({ setFilter, filter1Options }: GroupFilterPr
                     </>
                 )}
 
-                <CustomDropdown
-                    label={currentConfig.filter1.label}
-                    options={currentConfig.filter1.options}
-                    value={values.filter1}
-                    onSelect={(val) => setValue("filter1", val)}
-                />
+                {currentConfig.filter1 && (
+                    <CustomDropdown
+                        label={currentConfig.filter1.label}
+                        options={currentConfig.filter1.options}
+                        value={values.filter1}
+                        onSelect={(val) => setValue("filter1", val)}
+                    />
+                )}
 
                 {currentConfig.filter2 && (
                     <>

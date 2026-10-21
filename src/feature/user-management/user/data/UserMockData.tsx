@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckCircle, Clock, XCircle, GraduationCap, Building2, ShieldCheck, UserCog } from "lucide-react";
+import type { UserStatus as AccountStatus } from "../../../../types/account.types";
 
 // Các loại tài khoản chính
 export type UserRole = "USER" | "ORGANIZATION" | "ADMIN" | string;
@@ -69,11 +70,12 @@ export interface UserItem {
     coinHistory: CoinTransaction[];
 }
 
+/** Một dòng của bảng tài khoản — map từ AccountSummary (GET /admin/accounts). */
 export interface ListUserInterface {
     userId: string;
     fullName: string;
     role: UserRole;
-    status: UserStatus;
+    status: AccountStatus;
     avatarUrl?: string;
     createdTime?: string;
 }

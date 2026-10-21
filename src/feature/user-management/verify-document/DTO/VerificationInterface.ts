@@ -1,49 +1,32 @@
-export interface UserSummary {
-    userId: number;
-    fullName: string | null;
-    avatarUrl: string | null;
-    role: string;
-    status: string;
-    joinedAt: string;
-}
+/** Khớp backend VerificationDocumentResponse (GET /admin/verification-documents?status= | /{id}). */
+export type DocumentType = "BUSINESS_LICENSE" | "UNIVERSITY_DECISION" | "CLUB_CERTIFICATE" | "TAX_CODE" | "OTHER";
+export type VerificationStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface VerificationDocument {
-    verificationDocumentId: number;
-    userSummary?: UserSummary;
-    documentType: string;
+    verificationDocumentId: string;
+    /** Tài khoản tổ chức đã nộp — backend chỉ trả id (không có tên/avatar) */
+    userId: string;
+    fileId: string;
     fileUrl: string;
-    originalFileName: string;
-    createdTime: string;
+    documentType: DocumentType;
+    originalFileName: string | null;
+    status: VerificationStatus;
+    /** Lý do từ chối */
+    note: string | null;
+    createdAt: string;
 }
 
-export interface VerificationDocumentResponse {
-    content: VerificationDocument[];
-    pageable: {
-        pageNumber: number;
-        pageSize: number;
-        sort: {
-            unsorted: boolean;
-            sorted: boolean;
-            empty: boolean;
-        };
-        offset: number;
-        unpaged: boolean;
-        paged: boolean;
-    };
-    totalPages: number;
-    totalElements: number;
-    last: boolean;
-    numberOfElements: number;
-    size: number;
-    number: number;
-    sort: {
-        unsorted: boolean;
-        sorted: boolean;
-        empty: boolean;
-    };
-    first: boolean;
-    empty: boolean;
-}
+/** Độ dài tối đa lý do từ chối — khớp @Size(max = 1000) của RejectDocumentRequest. */
+export const REJECT_NOTE_MAX_LENGTH = 1000;
+
+/** Chỉ mở link https — chặn javascript:/data: URL (react-security §Unsafe URL Schemes). */
+export const safeHttpsUrl = (url: string): string | undefined => {
+    try {
+        return new URL(url).protocol === "https:" ? url : undefined;
+    } catch {
+        return undefined;
+    }
+};
 
 export const getDocumentTypeLabel = (type: string) => {
     switch (type?.toUpperCase()) {
@@ -53,10 +36,10 @@ export const getDocumentTypeLabel = (type: string) => {
             return "Chứng nhận CLB / Hội nhóm";
         case "TAX_CODE":
             return "Mã số thuế";
-        case "STUDENT_CARD":
-            return "Thẻ sinh viên";
-        case "CCCD":
-            return "Căn cước công dân";
+        case "UNIVERSITY_DECISION":
+            return "Quyết định của trường";
+        case "OTHER":
+            return "Khác";
         default:
             return type || "Tài liệu";
     }

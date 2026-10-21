@@ -11,7 +11,7 @@ export default function NewJobCard() {
         queryFn: () => RecruitmentApi.getAllRecruitment(0, 5, ["createdTime,desc"]),
     });
 
-    const jobs: any[] = data?.object?.content || [];
+    const jobs: any[] = data?.content || [];
 
     return (
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-5 h-full">

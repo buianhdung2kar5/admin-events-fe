@@ -1,15 +1,16 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import UserApi from "../../../services/user-management/UserApi";
+import { AccountApi } from "../../../services/user-management/AccountApi";
+import type { AccountDetail } from "../../../types/account.types";
 import { useState } from "react";
 import {
-    ArrowLeft, Building2, Calendar, Mail, Phone, Globe, CheckCircle2, Activity, Users, BarChart2, History, ExternalLink
+    ArrowLeft, Building2, Calendar, Mail, Phone, Globe, CheckCircle2, Activity, Users, BarChart2, History, FileCheck, type LucideIcon
 } from "lucide-react";
-import { getOrgTypeStyles, getVerificationStyles, OrganizationResponse } from "../../../feature/user-management/user/DTO/OrganizationInterface";
+import { getOrgTypeStyles, getVerificationStyles } from "../../../feature/user-management/user/DTO/OrganizationInterface";
 
 type Tab = "info" | "stats" | "events" | "logs";
 
-const tabs: { key: Tab; label: string; icon: any }[] = [
+const tabs: { key: Tab; label: string; icon: LucideIcon }[] = [
     { key: "info",   label: "Thông tin",      icon: Building2 },
     { key: "stats",  label: "Thống kê",       icon: Activity },
     { key: "events", label: "Sự kiện",        icon: Calendar },
@@ -21,12 +22,9 @@ export default function OrganizationDetailPage() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<Tab>("info");
 
-    const { data: org, isLoading, isError } = useQuery<OrganizationResponse>({
+    const { data: org, isLoading, isError } = useQuery<AccountDetail>({
         queryKey: ['org_detail', id],
-        queryFn: async () => {
-            const res = await UserApi.getUserById(id!);
-            return res.object || res;
-        },
+        queryFn: () => AccountApi.getAccount(id as string),
         enabled: !!id,
     });
 
@@ -35,25 +33,22 @@ export default function OrganizationDetailPage() {
 
     // Mapping API data to local structure
     const mappedOrg = {
-        id: org.userId.toString(),
-        name: org.organizationProfile?.organizationName || org.userProfile?.fullName || "N/A",
+        id: org.id,
+        name: org.organizationProfile?.organizationName || org.email,
         email: org.email,
-        logoUrl: org.organizationProfile?.logoUrl || org.userProfile?.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${org.userProfile?.fullName || 'Org'}`,
+        logoUrl: org.organizationProfile?.logoUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(org.organizationProfile?.organizationName || org.email)}`,
         status: org.status === "ACTIVE" ? "Active" : "Blocked",
         verificationStatus: org.organizationProfile?.verificationStatus || "Unverified",
         type: org.organizationProfile?.organizationType || "University",
         address: org.organizationProfile?.address || "—",
-        createdTime: org.createdTime,
+        createdTime: org.createdAt,
         phoneNumber: org.phoneNumber,
         bio: org.organizationProfile?.description,
-        currentCoin: org.currentCoin,
-        verificationDocuments: org.verificationDocuments || [],
+        currentCoin: org.currentCoin ?? 0,
         // Default values for missing fields in current response
         eventCount: 0, 
         memberCount: 0,
         dashboard: { totalEvents: 0, totalRegistrations: 0, totalViews: 0, averageAttendanceRate: 0 },
-        events: [],
-        logs: []
     };
 
     const typeStyle = getOrgTypeStyles(mappedOrg.type);
@@ -142,28 +137,11 @@ export default function OrganizationDetailPage() {
                                     <p className="text-sm text-gray-600 leading-relaxed">{mappedOrg.bio}</p>
                                 </div>
                             )}
-                            {mappedOrg.verificationDocuments.length > 0 && (
-                                <div className="flex flex-col gap-3">
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide px-1">Tài liệu xác thực</p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {mappedOrg.verificationDocuments.map((doc: any) => (
-                                            <a key={doc.verificationDocumentId} href={doc.fileUrl} target="_blank" rel="noopener noreferrer" 
-                                                className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl hover:border-blue-200 transition-all group">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-blue-50 text-blue-500 rounded-lg group-hover:bg-blue-100 transition-colors">
-                                                        <ExternalLink size={16} />
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-gray-800">{doc.originalFileName}</span>
-                                                        <span className="text-[10px] text-gray-400 font-bold uppercase">{doc.documentType}</span>
-                                                    </div>
-                                                </div>
-                                                <ExternalLink size={14} className="text-gray-300 group-hover:text-blue-500" />
-                                            </a>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                            {/* Backend chưa có API Admin xem tài liệu theo tổ chức (chỉ có danh sách PENDING toàn hệ thống) */}
+                            <div className="flex items-center gap-3 p-4 bg-gray-50 border border-dashed border-gray-200 rounded-2xl text-sm text-gray-400">
+                                <FileCheck size={16} className="flex-shrink-0" />
+                                Tài liệu xác thực của tổ chức: backend chưa có API — duyệt tài liệu tại mục "Duyệt tài liệu".
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="bg-blue-50/50 rounded-2xl p-6 flex flex-col items-center gap-2 border border-blue-100/50">
                                     <span className="text-3xl font-black text-blue-600">{mappedOrg.eventCount}</span>
@@ -198,46 +176,13 @@ export default function OrganizationDetailPage() {
                         </div>
                     )}
 
+                    {/* Backend chưa có API sự kiện / nhật ký theo tổ chức cho Admin */}
                     {activeTab === "events" && (
-                        <div className="flex flex-col gap-4">
-                            {mappedOrg.events.length === 0 ? (
-                                <p className="text-center text-gray-400 text-sm py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200">Chưa có sự kiện nào</p>
-                            ) : mappedOrg.events.map((ev: any) => (
-                                <div key={ev.id} className="bg-gray-50 rounded-2xl p-5 flex items-center justify-between gap-4 border border-gray-100/50 hover:border-blue-100 transition-all">
-                                    <div>
-                                        <p className="text-base font-bold text-gray-800">{ev.name}</p>
-                                        <p className="text-sm text-gray-400 mt-1">{new Date(ev.date).toLocaleDateString("vi-VN")} · {ev.registrations.toLocaleString()} người đăng ký</p>
-                                    </div>
-                                    <span className={`text-[11px] font-bold px-3 py-1.5 rounded-xl
-                                        ${ev.status === "completed" ? "bg-green-50 text-green-600" :
-                                          ev.status === "upcoming"  ? "bg-blue-50 text-blue-600" :
-                                          ev.status === "ongoing"   ? "bg-amber-50 text-amber-600" :
-                                                                        "bg-red-50 text-red-500"}`}>
-                                        {ev.status === "completed" ? "Đã kết thúc" :
-                                         ev.status === "upcoming"  ? "Sắp diễn ra" :
-                                         ev.status === "ongoing"   ? "Đang diễn ra" : "Đã hủy"}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
+                        <p className="text-center text-gray-400 text-sm py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200">Sự kiện của tổ chức — backend chưa có API cho mục này.</p>
                     )}
 
                     {activeTab === "logs" && (
-                        <div className="flex flex-col gap-0">
-                            {mappedOrg.logs.length === 0 ? (
-                                <p className="text-center text-gray-400 text-sm py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200">Không có lịch sử hoạt động</p>
-                            ) : mappedOrg.logs.map((log: any) => (
-                                <div key={log.id} className="flex gap-4 py-4 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 px-3 rounded-2xl transition-colors">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-[#0092B8] mt-1.5 flex-shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-bold text-gray-800">{log.action}</p>
-                                        <p className="text-xs text-gray-400 mt-1 font-medium">
-                                            Thực hiện bởi: {log.performedBy} · {new Date(log.timestamp).toLocaleString("vi-VN")}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <p className="text-center text-gray-400 text-sm py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200">Lịch sử hoạt động — backend chưa có API cho mục này.</p>
                     )}
                 </div>
             </div>

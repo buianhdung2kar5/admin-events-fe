@@ -1,21 +1,11 @@
-import apiClient, { ApiResponse } from "../apiClient";
+import { http } from "../apiClient";
+import type { LegacyPage } from "../../types/api.types";
 
+/** Backend CHƯA có module điểm danh — giữ nguyên path cũ, chỉ khớp interceptor mới. */
 export const AttendanceApi = {
-    getLogsAttendance: (eventId: string, page: number = 0, size: number = 20): Promise<ApiResponse> => {
-        return apiClient.get<any, ApiResponse>(`attendances`,{params: {eventId, page, size}})
-    },
-
-    getAttendanceById: (id: string): Promise<ApiResponse> => {
-        return apiClient.get<any, ApiResponse>(`attendances/${id}`)
-    },
-
-    putAttendance: (id: string, data: any): Promise<ApiResponse> => {
-        return apiClient.put<any, ApiResponse>(`attendances/${id}`, data)
-    },
-
-    deleteAttendance: (id: string): Promise<ApiResponse> => {
-        return apiClient.delete<any, ApiResponse>(`attendances/${id}`)
-    },
-
-    
-}   
+    getLogsAttendance: <T = unknown>(eventId: string, page: number = 0, size: number = 20): Promise<LegacyPage<T>> =>
+        http.get<LegacyPage<T>>("attendances", { params: { eventId, page, size } }),
+    getAttendanceById: <T = unknown>(id: string): Promise<T> => http.get<T>(`attendances/${id}`),
+    putAttendance: (id: string, data: unknown): Promise<unknown> => http.put<unknown>(`attendances/${id}`, data),
+    deleteAttendance: (id: string): Promise<void> => http.delete(`attendances/${id}`),
+};

@@ -1,17 +1,33 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Users, Eye,
     ShieldOff, ShieldCheck, FileWarning, Loader2, CheckSquare2, X
 } from 'lucide-react';
-import { ListUserInterface, getRoleDetails, UserStatus } from '../data/UserMockData';
+import { ListUserInterface, getRoleDetails } from '../data/UserMockData';
 import { Column } from '../../../../components/TableData';
-import UserApi from '../../../../services/user-management/UserApi';
+import { AccountApi } from '../../../../services/user-management/AccountApi';
+import type { AccountSummary, UserRole, UserStatus } from '../../../../types/account.types';
+import { USER_STATUS_LABELS } from '../../../../types/account.types';
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { SystemManagementApi } from '../../../../services/system-management/SystemManagementApi';
 import Toast from '../../../../components/common/Toast';
 const PAGE_SIZE = 5;
+const TOAST_DURATION_MS = 3000;
+
+const STATUS_BADGE: Record<UserStatus, string> = {
+    ACTIVE: "bg-[#4BBDD3] text-white",
+    BLOCKED: "bg-red-500 text-white",
+};
+
+const toRow = (item: AccountSummary): ListUserInterface => ({
+    userId: item.id,
+    fullName: item.displayName || item.email,
+    role: item.role,
+    status: item.status,
+    avatarUrl: item.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(item.email)}`,
+    createdTime: item.createdAt,
+});
 
 interface ListUserProps {
     filter?: {
@@ -35,7 +51,7 @@ export default function ListUser({ filter }: ListUserProps) {
 
     const notify = (msg: string, ok = true) => {
         setToast({ msg, ok });
-        setTimeout(() => setToast(null), 3000);
+        setTimeout(() => setToast(null), TOAST_DURATION_MS);
     }; 
 
     useEffect(() => {
@@ -45,37 +61,15 @@ export default function ListUser({ filter }: ListUserProps) {
     const { data: queryData, isLoading } = useQuery({
         queryKey: ['users_list', currentPage, filter],
         queryFn: async () => {
-            const search = filter?.search || undefined;
-            const role = filter?.filter1 || undefined;
-            const status = filter?.filter2 || undefined;
-            
-            const res = await UserApi.getAllUsers(
-                currentPage - 1,
-                PAGE_SIZE,
-                search,
-                'createdTime',
-                'desc',
-                role,
-                status
-            );
-            if (res.statusCode !== 200) {
-                throw new Error(res.message || 'Failed to fetch users');    
-            } else {
-                const responseData = res.object || {};
-                const fetchedData: any[] = responseData.content || [];
-                const total = responseData.totalElements || 0;
-                const totalPagesCount = responseData.totalPages || 1;
-                const mappedData: ListUserInterface[] = fetchedData.map((item: any) => ({
-                    userId: item.userId?.toString() || item.id?.toString() || "",
-                    fullName: item.fullName || item.name || "Chưa cập nhật",
-                    role: item.role || "USER",
-                    status: item.status || "ACTIVE",
-                    avatarUrl: item.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.fullName || item.userId || 'User'}`,
-                    createdTime: item.joinedAt || item.createdTime || new Date().toISOString()
-                }));
-                return { data: mappedData, totalRecords: total, totalPages: totalPagesCount };
-            }
-    }
+            const page = await AccountApi.getAccounts({
+                keyword: filter?.search || undefined,
+                role: (filter?.filter1 || undefined) as UserRole | undefined,
+                status: (filter?.filter2 || undefined) as UserStatus | undefined,
+                page: currentPage - 1,
+                size: PAGE_SIZE,
+            });
+            return { data: page.items.map(toRow), totalRecords: page.totalElements, totalPages: Math.max(page.totalPages, 1) };
+        },
     });
 
     const paginated = queryData?.data || [];
@@ -83,8 +77,8 @@ export default function ListUser({ filter }: ListUserProps) {
     const totalPages = queryData?.totalPages || 1;
     const selectedUsers = paginated.filter(u => selectedIds.includes(u.userId));
     const allActive   = selectedUsers.length > 0 && selectedUsers.every(u => u.status === "ACTIVE");
-    const allDisabled = selectedUsers.length > 0 && selectedUsers.every(u => u.status === "DISABLED");
-    const bulkAction  = allActive ? "SUSPEND" : allDisabled ? "UNSUSPEND" : null;
+    const allBlocked  = selectedUsers.length > 0 && selectedUsers.every(u => u.status === "BLOCKED");
+    const bulkAction  = allActive ? "SUSPEND" : allBlocked ? "UNSUSPEND" : null;
 
     const openSuspendModal = (action: "SUSPEND" | "UNSUSPEND", id?: string) => {
         setSuspendTargetId(id || null);
@@ -96,18 +90,18 @@ export default function ListUser({ filter }: ListUserProps) {
         const targets = suspendTargetId ? [suspendTargetId] : selectedIds;
         setIsActioning(true);
         try {
-            const res = await SystemManagementApi.bulkAction({
-                entityType: "USER",
-                action: suspendAction,
-                entityIds: targets
-            });
-            if (res.statusCode !== 200) throw new Error(res.message);
+            // Backend không có API hàng loạt → gọi block / unlock cho từng tài khoản
+            const result = suspendAction === "SUSPEND" ? await AccountApi.blockMany(targets) : await AccountApi.unlockMany(targets);
             queryClient.invalidateQueries({ queryKey: ['users_list'] });
+            queryClient.invalidateQueries({ queryKey: ['user_stats_dashboard'] });
             if (!suspendTargetId) setSelectedIds([]);
             setIsSuspendModalOpen(false);
-            notify(suspendAction === "SUSPEND" ? "Khóa tài khoản thành công!" : "Mở khóa tài khoản thành công!");
-        } catch {
-            notify(suspendAction === "SUSPEND" ? "Khóa thất bại. Vui lòng thử lại." : "Mở khóa thất bại. Vui lòng thử lại.", false);
+            const verb = suspendAction === "SUSPEND" ? "Khóa" : "Mở khóa";
+            if (result.failed === 0) {
+                notify(`${verb} tài khoản thành công!`);
+            } else {
+                notify(`${verb} thành công ${result.succeeded}, thất bại ${result.failed}. ${result.firstError ?? ""}`.trim(), false);
+            }
         } finally {
             setIsActioning(false);
         }
@@ -169,13 +163,11 @@ export default function ListUser({ filter }: ListUserProps) {
             header: "Trạng thái",
             align: "center",
             render: (user) => {
-                const cfg = {
-                    ACTIVE:  "bg-[#4BBDD3] text-white",
-                    PENDING: "bg-amber-400 text-white",
-                    DISABLED: "bg-red-500 text-white",
-                }[user.status] || "";
-                const lbl = { ACTIVE: "Hoạt động", PENDING: "Chờ duyệt", DISABLED: "Bị khóa" }[user.status];
-                return <span className={`inline-block px-4 py-1.5 text-[10px] font-bold rounded-xl whitespace-nowrap ${cfg}`}>{lbl}</span>;
+                return (
+                    <span className={`inline-block px-4 py-1.5 text-[10px] font-bold rounded-xl whitespace-nowrap ${STATUS_BADGE[user.status]}`}>
+                        {USER_STATUS_LABELS[user.status]}
+                    </span>
+                );
             },
         },
 
@@ -205,7 +197,7 @@ export default function ListUser({ filter }: ListUserProps) {
                     >
                         <Eye size={17} />
                     </button>
-                    {user.status !== "DISABLED" ? (
+                    {user.status !== "BLOCKED" ? (
                         <button
                             title="Khóa tài khoản"
                             onClick={() => openSuspendModal("SUSPEND", user.userId)}

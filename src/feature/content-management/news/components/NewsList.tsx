@@ -29,7 +29,7 @@ const NewsList: React.FC<NewsListProps> = ({ filter, onTagsLoaded }) => {
         queryFn: () => NewApi.getAllNews(0, 200, ["createdTime,desc"]),
     });
 
-    const allNews: NewsItem[] = newsResponse?.object?.content || [];
+    const allNews: NewsItem[] = newsResponse?.content || [];
 
     // Expose unique tags to parent for dynamic dropdown
     useEffect(() => {
