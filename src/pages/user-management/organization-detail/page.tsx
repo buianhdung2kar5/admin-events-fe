@@ -1,14 +1,19 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AccountApi } from "../../../services/user-management/AccountApi";
-import type { AccountDetail } from "../../../types/account.types";
+import type { AccountDetail, AccountProfileUpdateBody } from "../../../types/account.types";
 import { useState } from "react";
 import {
-    ArrowLeft, Building2, Calendar, Mail, Phone, Globe, CheckCircle2, Activity, Users, BarChart2, History, FileCheck, type LucideIcon
+    ArrowLeft, Building2, Calendar, Mail, Phone, Globe, CheckCircle2, Activity, Users, BarChart2, History, FileCheck, Pencil, Save, X, type LucideIcon
 } from "lucide-react";
+import Toast from "../../../components/common/Toast";
+import OrganizationProfileForm from "../../../feature/user-management/user/components/OrganizationProfileForm";
 import { getOrgTypeStyles, getVerificationStyles } from "../../../feature/user-management/user/DTO/OrganizationInterface";
 
 type Tab = "info" | "stats" | "events" | "logs";
+
+const PROFILE_FORM_ID = "organization-profile-form";
+const TOAST_DURATION_MS = 3000;
 
 const tabs: { key: Tab; label: string; icon: LucideIcon }[] = [
     { key: "info",   label: "Thông tin",      icon: Building2 },
@@ -20,13 +25,35 @@ const tabs: { key: Tab; label: string; icon: LucideIcon }[] = [
 export default function OrganizationDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<Tab>("info");
+    const [isEditing, setIsEditing] = useState(false);
+    const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
     const { data: org, isLoading, isError } = useQuery<AccountDetail>({
         queryKey: ['org_detail', id],
         queryFn: () => AccountApi.getAccount(id as string),
         enabled: !!id,
     });
+    const updateProfile = useMutation({
+        mutationFn: (body: AccountProfileUpdateBody) => AccountApi.updateProfile(id as string, body),
+        onSuccess: () => Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['org_detail', id] }),
+            queryClient.invalidateQueries({ queryKey: ['users_list'] }),
+        ]),
+    });
+
+    const startEditing = () => {
+        setActiveTab("info");
+        setIsEditing(true);
+    };
+
+    const saveProfile = async (body: AccountProfileUpdateBody) => {
+        await updateProfile.mutateAsync(body);
+        setIsEditing(false);
+        setToast({ msg: "Đã lưu hồ sơ", ok: true });
+        setTimeout(() => setToast(null), TOAST_DURATION_MS);
+    };
 
     if (isLoading) return <div className="p-8 text-center text-gray-500 font-medium">Đang tải thông tin tổ chức...</div>;
     if (isError || !org) return <div className="p-8 text-center text-red-500 font-medium">Không tìm thấy tổ chức!</div>;
@@ -38,8 +65,8 @@ export default function OrganizationDetailPage() {
         email: org.email,
         logoUrl: org.organizationProfile?.logoUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(org.organizationProfile?.organizationName || org.email)}`,
         status: org.status === "ACTIVE" ? "Active" : "Blocked",
-        verificationStatus: org.organizationProfile?.verificationStatus || "Unverified",
-        type: org.organizationProfile?.organizationType || "University",
+        verificationStatus: org.organizationProfile?.verificationStatus ?? "UNVERIFIED",
+        type: org.organizationProfile?.organizationType ?? "",
         address: org.organizationProfile?.address || "—",
         createdTime: org.createdAt,
         phoneNumber: org.phoneNumber,
@@ -53,9 +80,12 @@ export default function OrganizationDetailPage() {
 
     const typeStyle = getOrgTypeStyles(mappedOrg.type);
     const verStyle  = getVerificationStyles(mappedOrg.verificationStatus);
+    const profile = org.organizationProfile;
 
     return (
         <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-12 animate-[fadeIn_0.3s_ease]">
+            <Toast toast={toast} onClose={() => setToast(null)} />
+
             {/* Header / Back */}
             <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -63,6 +93,25 @@ export default function OrganizationDetailPage() {
                         <ArrowLeft size={20} />
                     </button>
                     <h1 className="text-2xl font-bold text-gray-800">Chi tiết tổ chức</h1>
+                </div>
+                <div className="flex items-center gap-2">
+                    {isEditing ? (
+                        <>
+                            <button type="button" onClick={() => setIsEditing(false)} disabled={updateProfile.isPending}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors disabled:opacity-50">
+                                <X size={15} /> Hủy
+                            </button>
+                            <button type="submit" form={PROFILE_FORM_ID} disabled={updateProfile.isPending}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-[#0092B8] hover:bg-[#007a9e] rounded-xl transition-colors disabled:opacity-50">
+                                <Save size={15} /> {updateProfile.isPending ? "Đang lưu..." : "Lưu thay đổi"}
+                            </button>
+                        </>
+                    ) : profile && (
+                        <button type="button" onClick={startEditing}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors">
+                            <Pencil size={15} /> Chỉnh sửa
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -75,7 +124,7 @@ export default function OrganizationDetailPage() {
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                             <p className="text-2xl font-black text-gray-900 truncate">{mappedOrg.name}</p>
-                            {(mappedOrg.verificationStatus === "APPROVED" || mappedOrg.verificationStatus === "VERIFIED") && <CheckCircle2 size={20} className="text-[#0092B8]" />}
+                            {mappedOrg.verificationStatus === "VERIFIED" && <CheckCircle2 size={20} className="text-[#0092B8]" />}
                         </div>
                         <p className="text-sm text-gray-400 truncate mb-3">{mappedOrg.email || "—"}</p>
                         <div className="flex items-center gap-2 flex-wrap">
@@ -100,7 +149,8 @@ export default function OrganizationDetailPage() {
                             <button
                                 key={tab.key}
                                 onClick={() => setActiveTab(tab.key)}
-                                className={`flex items-center gap-2 px-4 py-4 text-sm font-bold whitespace-nowrap border-b-[3px] transition-all -mb-[1px] ${
+                                disabled={isEditing && tab.key !== "info"}
+                                className={`flex items-center gap-2 px-4 py-4 text-sm font-bold whitespace-nowrap border-b-[3px] transition-all -mb-[1px] disabled:opacity-40 disabled:cursor-not-allowed ${
                                     activeTab === tab.key
                                         ? "border-[#0092B8] text-[#0092B8]"
                                         : "border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-200"
@@ -114,7 +164,10 @@ export default function OrganizationDetailPage() {
 
                 {/* Content */}
                 <div className="p-8 bg-white min-h-[400px]">
-                    {activeTab === "info" && (
+                    {activeTab === "info" && isEditing && profile && (
+                        <OrganizationProfileForm formId={PROFILE_FORM_ID} account={org} profile={profile} onSubmit={saveProfile} />
+                    )}
+                    {activeTab === "info" && !isEditing && (
                         <div className="flex flex-col gap-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {[

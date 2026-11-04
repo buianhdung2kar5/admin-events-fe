@@ -1,264 +1,183 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from "react";
+import { Eye, Loader2, Search, ShieldCheck, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { VerificationDocumentApi, VERIFICATION_QUERY_KEY } from "../../../../services/user-management/DocumentApi";
+import { getErrorMessage } from "../../../../services/apiError";
+import Toast from "../../../../components/common/Toast";
 import {
-    FileText, Eye, CheckCircle2, FileClock,
-    CheckSquare2, X, Loader2
-} from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { VerificationDocumentApi, PENDING_DOCS_QUERY_KEY } from '../../../../services/user-management/DocumentApi';
-import { getErrorMessage } from '../../../../services/apiError';
-import {
-    VerificationDocument,
-    getDocumentTypeLabel, getDocumentTypeStyle, safeHttpsUrl
-} from '../DTO/VerificationInterface';
-import DocDetailModal from './DocDetailModal';
-import Toast from '../../../../components/common/Toast';
+    VERIFICATION_STATUS_META,
+    getDocumentTypeLabel,
+    getMissingDocuments,
+    getOrganizationTypeLabel,
+    type VerificationProfile,
+    type VerificationStatus,
+} from "../DTO/VerificationInterface";
+import DocDetailModal from "./DocDetailModal";
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 10;
+const TOAST_DURATION_MS = 3000;
 
-interface DocListProps {
-    filter?: {
-        search?: string;
-        filter1?: string;
-        filter2?: string;
-        date?: string;
-    };
-}
+type Tab = VerificationStatus | "ALL";
+const TABS: { key: Tab; label: string }[] = [
+    { key: "PENDING", label: "Chờ duyệt" },
+    { key: "APPROVED", label: "Đã duyệt" },
+    { key: "REJECTED", label: "Từ chối" },
+    { key: "ALL", label: "Tất cả" },
+];
 
-export default function DocList({ filter }: DocListProps) {
-    const [currentPage, setCurrentPage] = useState(1);
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const [detailDoc, setDetailDoc] = useState<VerificationDocument | null>(null);
-    const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-    
+const formatDate = (iso: string | null): string =>
+    iso ? new Date(iso).toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
+/** Danh sách HỒ SƠ xác minh tổ chức (phân trang server); mở modal để duyệt / từ chối cả hồ sơ. */
+export default function DocList() {
     const queryClient = useQueryClient();
+    const [tab, setTab] = useState<Tab>("PENDING");
+    const [page, setPage] = useState(0);
+    const [search, setSearch] = useState("");
+    const [detail, setDetail] = useState<VerificationProfile | null>(null);
+    const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
-    // Backend trả toàn bộ tài liệu PENDING (không phân trang) → tìm kiếm & phân trang ở client
-    const { data: allDocuments = [], isLoading, isError } = useQuery({
-        queryKey: PENDING_DOCS_QUERY_KEY,
-        queryFn: VerificationDocumentApi.getPendingDocuments,
+    const params = { status: tab === "ALL" ? undefined : tab, page, size: PAGE_SIZE };
+    const { data, isLoading, isFetching, error } = useQuery({
+        queryKey: [...VERIFICATION_QUERY_KEY, "list", params],
+        queryFn: () => VerificationDocumentApi.list(params),
+        placeholderData: keepPreviousData,
     });
 
-    const filtered = useMemo(() => {
-        const keyword = filter?.search?.trim().toLowerCase();
-        if (!keyword) return allDocuments;
-        return allDocuments.filter((d) =>
-            (d.originalFileName ?? "").toLowerCase().includes(keyword) || d.userId.toLowerCase().includes(keyword));
-    }, [allDocuments, filter?.search]);
+    const keyword = search.trim().toLowerCase();
+    const profiles = (data?.items ?? []).filter((p) =>
+        !keyword
+        || (p.organizationName ?? "").toLowerCase().includes(keyword)
+        || (p.organizationEmail ?? "").toLowerCase().includes(keyword));
+    const totalPages = Math.max(1, data?.totalPages ?? 1);
 
-    const totalElements = filtered.length;
-    const totalPages = Math.max(1, Math.ceil(totalElements / PAGE_SIZE));
-    const documents = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
-    useEffect(() => { setCurrentPage(1); }, [filter]);
-
-    // ── Actions ─────────────────────────────────────────────────────
-    const refreshDocuments = () => {
-        queryClient.invalidateQueries({ queryKey: ['verification-documents'] });
-        queryClient.invalidateQueries({ queryKey: ['doc_stats_dashboard'] });
+    const notify = (msg: string, ok = true) => {
+        setToast({ msg, ok });
+        setTimeout(() => setToast(null), TOAST_DURATION_MS);
     };
 
-    const handleApprove = async (id: string) => {
-        try {
-            await VerificationDocumentApi.approve(id);
-            setToast({ msg: "Phê duyệt hồ sơ thành công!", ok: true });
-            refreshDocuments();
-            setDetailDoc(null);
-        } catch (error: unknown) {
-            setToast({ msg: getErrorMessage(error, "Không thể phê duyệt hồ sơ"), ok: false });
-        }
+    // Duyệt / từ chối đổi trạng thái tổ chức → làm mới cả danh sách, thống kê và trang tài khoản
+    const onDone = () => {
+        queryClient.invalidateQueries({ queryKey: VERIFICATION_QUERY_KEY });
+        queryClient.invalidateQueries({ queryKey: ["users_list"] });
+        queryClient.invalidateQueries({ queryKey: ["org_detail"] });
     };
+    const approve = useMutation({ mutationFn: (id: string) => VerificationDocumentApi.approve(id), onSuccess: onDone });
+    const reject = useMutation({
+        mutationFn: ({ id, reason }: { id: string; reason: string }) => VerificationDocumentApi.reject(id, reason),
+        onSuccess: onDone,
+    });
 
-    const handleReject = async (id: string, reason: string) => {
-        try {
-            await VerificationDocumentApi.reject(id, reason.trim());
-            setToast({ msg: "Đã từ chối hồ sơ.", ok: true });
-            refreshDocuments();
-            setDetailDoc(null);
-        } catch (error: unknown) {
-            setToast({ msg: getErrorMessage(error, "Không thể từ chối hồ sơ"), ok: false });
-        }
+    const handleTab = (next: Tab) => {
+        setTab(next);
+        setPage(0);
     };
-
-    const toggleSelect = (id: string) => 
-        setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-    
-    const toggleSelectAll = () => 
-        setSelectedIds(selectedIds.length === documents.length ? [] : documents.map((d) => d.verificationDocumentId));
-
-    if (isError) return <div className="p-12 text-center text-red-500 bg-white rounded-3xl border border-red-100 font-medium">Lỗi khi tải danh sách hồ sơ xác thực!</div>;
 
     return (
         <div className="flex flex-col gap-4">
             <Toast toast={toast} onClose={() => setToast(null)} />
 
-            {/* Bulk Action Bar */}
-            {selectedIds.length > 0 && (
-                <div className="bg-[#0092B8] text-white rounded-2xl px-5 py-3 flex items-center justify-between shadow-md animate-[fadeSlideUp_0.2s_ease]">
-                    <div className="flex items-center gap-2 text-sm font-semibold">
-                        <CheckSquare2 size={17} />
-                        Đã chọn <span className="font-black text-base">{selectedIds.length}</span> hồ sơ
-                    </div>
-                    <div className="flex gap-2">
-                        <button onClick={() => setSelectedIds([])} className="p-2 hover:bg-white/15 rounded-xl transition-colors">
-                            <X size={16} />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <nav className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit" aria-label="Lọc trạng thái hồ sơ">
+                    {TABS.map(({ key, label }) => (
+                        <button key={key} type="button" onClick={() => handleTab(key)} aria-pressed={tab === key}
+                            className={`px-4 min-h-10 rounded-lg text-sm font-semibold transition-all ${tab === key ? "bg-white shadow-sm text-[#0092B8]" : "text-gray-500 hover:text-gray-700"}`}>
+                            {label}
                         </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Table */}
-            <div className="w-full bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden relative">
-                {isLoading && (
-                    <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center">
-                        <Loader2 className="animate-spin text-[#0092B8]" size={32} />
-                    </div>
-                )}
-
-                <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-blue-50/50 rounded-xl">
-                            <FileText size={20} className="text-blue-500" />
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-bold text-gray-800">Duyệt hồ sơ ({totalElements})</h3>
-                            <p className="text-sm text-gray-400 font-medium">Xác thực tổ chức và phê duyệt yêu cầu</p>
-                        </div>
-                    </div>
-                    <button onClick={toggleSelectAll} 
-                        className="text-xs font-semibold text-gray-400 hover:text-[#0092B8] transition-colors flex items-center gap-1.5">
-                        <CheckSquare2 size={14} />
-                        {selectedIds.length === documents.length && documents.length > 0 ? "Bỏ chọn tất cả" : "Chọn trang này"}
-                    </button>
-                </div>
-
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-gray-50">
-                                {["", "Tài liệu", "Loại", "Người gửi", "Ngày gửi", "Trạng thái", "Hành động"].map((h, i) => (
-                                    <th key={i} className={`px-5 py-5 text-sm font-bold text-gray-400 ${i > 4 ? "text-center" : "text-left"}`}>{h}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {documents.length > 0 ? documents.map((doc: VerificationDocument) => {
-                                const typeLabel = getDocumentTypeLabel(doc.documentType);
-                                const typeStyle = getDocumentTypeStyle(doc.documentType);
-                                return (
-                                    <tr key={doc.verificationDocumentId} 
-                                        className={`group border-b border-gray-50 last:border-0 transition-colors ${selectedIds.includes(doc.verificationDocumentId) ? "bg-blue-50/40" : "hover:bg-gray-50/50"}`}>
-                                        <td className="px-5 py-4 text-center w-12">
-                                            <input type="checkbox" checked={selectedIds.includes(doc.verificationDocumentId)} 
-                                                onChange={() => toggleSelect(doc.verificationDocumentId)}
-                                                className="w-4 h-4 rounded accent-[#0092B8] cursor-pointer" />
-                                        </td>
-                                        <td className="px-5 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center border border-gray-100 text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-all">
-                                                    <FileText size={18} />
-                                                </div>
-                                                <div className="flex flex-col min-w-0">
-                                                    <span className="text-sm font-bold text-gray-800 max-w-[220px] truncate block">{doc.originalFileName ?? "Tài liệu xác minh"}</span>
-                                                    {safeHttpsUrl(doc.fileUrl) && (
-                                                        <a href={safeHttpsUrl(doc.fileUrl)} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline font-bold truncate block">Xem file gốc</a>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-4">
-                                            <span className={`inline-flex items-center px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider ${typeStyle}`}>
-                                                {typeLabel}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-4">
-                                            <div className="flex flex-col min-w-0">
-                                                <Link to={`/user-management/organization/${doc.userId}`} className="text-sm font-bold text-[#0092B8] hover:underline truncate leading-tight">
-                                                    Xem tổ chức
-                                                </Link>
-                                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight truncate max-w-[160px]">UID: {doc.userId}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-4">
-                                            <span className="text-sm text-gray-500 font-medium">{new Date(doc.createdAt).toLocaleDateString("vi-VN")}</span>
-                                        </td>
-                                        <td className="px-5 py-4 text-center">
-                                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-600 text-[10px] font-black uppercase rounded-xl whitespace-nowrap">
-                                                <FileClock size={12} /> Chờ duyệt
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-4 text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button onClick={() => setDetailDoc(doc)} title="Xem hồ sơ"
-                                                    className="p-2 rounded-xl transition-all text-gray-400 hover:text-[#0092B8] hover:bg-blue-50">
-                                                    <Eye size={17} />
-                                                </button>
-                                                <button 
-                                                    onClick={() => {
-                                                        if (window.confirm("Bạn có chắc chắn muốn phê duyệt hồ sơ này không?")) {
-                                                            handleApprove(doc.verificationDocumentId);
-                                                        }
-                                                    }} 
-                                                    title="Phê duyệt nhanh"
-                                                    className="p-2 rounded-xl transition-all text-white bg-[#0092B8] hover:bg-[#007a99] shadow-sm"
-                                                >
-                                                    <CheckCircle2 size={16} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            }) : !isLoading && (
-                                <tr>
-                                    <td colSpan={7} className="px-6 py-20 text-center flex flex-col items-center justify-center gap-4">
-                                        <div className="p-4 bg-gray-50 rounded-full text-gray-300">
-                                            <FileText size={48} />
-                                        </div>
-                                        <p className="text-gray-400 font-bold">Không tìm thấy hồ sơ phù hợp</p>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Pagination */}
-                {totalPages >= 1 && (
-                    <div className="px-6 py-4 border-t border-gray-50 flex items-center justify-between text-xs text-gray-400 font-medium">
-                        <span>Hiển thị <span className="text-gray-700 font-bold">{documents.length}</span> / <span className="text-gray-700 font-bold">{totalElements}</span> hồ sơ</span>
-                        <div className="flex items-center gap-1.5">
-                            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                                className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-white transition-colors disabled:opacity-40 cursor-pointer">Trước</button>
-                            
-                            <div className="flex items-center gap-1">
-                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                    let pageNum = 1;
-                                    if (totalPages <= 5) pageNum = i + 1;
-                                    else if (currentPage <= 3) pageNum = i + 1;
-                                    else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
-                                    else pageNum = currentPage - 2 + i;
-                                    
-                                    return (
-                                        <button key={pageNum} onClick={() => setCurrentPage(pageNum)}
-                                            className={`w-8 h-8 rounded-lg font-bold transition-all ${pageNum === currentPage ? "bg-[#0092B8] text-white shadow-sm" : "border border-gray-200 hover:bg-white"}`}>{pageNum}</button>
-                                    );
-                                })}
-                            </div>
-
-                            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                                className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-white transition-colors disabled:opacity-40 cursor-pointer">Sau</button>
-                        </div>
-                    </div>
-                )}
+                    ))}
+                </nav>
+                <label className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 min-h-11 focus-within:border-[#0092B8] md:w-80">
+                    <Search size={16} className="text-gray-400 shrink-0" aria-hidden="true" />
+                    <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm tên / email tổ chức (trang này)"
+                        aria-label="Tìm tổ chức" className="text-sm outline-none bg-transparent w-full" />
+                </label>
             </div>
 
-            {/* Document Detail & Action Modal */}
-            {detailDoc && (
-                <DocDetailModal 
-                    doc={detailDoc} 
-                    onClose={() => setDetailDoc(null)} 
-                    onApprove={handleApprove}
-                    onReject={handleReject}
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden relative">
+                {isFetching && !isLoading && <Loader2 size={16} className="absolute top-4 right-4 animate-spin text-[#0092B8]" aria-label="Đang tải lại" />}
+                {isLoading ? (
+                    <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-[#0092B8] animate-spin" /></div>
+                ) : error ? (
+                    <p role="alert" className="px-6 py-16 text-center text-sm font-medium text-red-500">{getErrorMessage(error, "Không tải được danh sách hồ sơ")}</p>
+                ) : profiles.length === 0 ? (
+                    <div className="px-6 py-16 flex flex-col items-center gap-2 text-sm text-gray-400">
+                        <ShieldCheck size={32} className="text-gray-300" aria-hidden="true" /> Không có hồ sơ nào
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="text-xs text-gray-500 uppercase bg-gray-50/50 border-b border-gray-100 font-semibold tracking-wider">
+                                <tr>
+                                    <th className="px-5 py-4">Tổ chức</th>
+                                    <th className="px-5 py-4">Loại</th>
+                                    <th className="px-5 py-4">Giấy tờ</th>
+                                    <th className="px-5 py-4">Ngày nộp</th>
+                                    <th className="px-5 py-4">Trạng thái</th>
+                                    <th className="px-5 py-4 text-right">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {profiles.map((profile) => {
+                                    const missing = getMissingDocuments(profile);
+                                    const meta = VERIFICATION_STATUS_META[profile.status];
+                                    return (
+                                        <tr key={profile.id} className="align-top hover:bg-blue-50/30 transition-colors">
+                                            <td className="px-5 py-4">
+                                                <p className="font-bold text-gray-800">{profile.organizationName ?? "Chưa đặt tên"}</p>
+                                                <p className="text-xs text-gray-400">{profile.organizationEmail ?? profile.userId}</p>
+                                            </td>
+                                            <td className="px-5 py-4 text-xs font-semibold text-gray-600">{getOrganizationTypeLabel(profile.organizationType)}</td>
+                                            <td className="px-5 py-4 text-xs">
+                                                <p className="font-semibold text-gray-700">{profile.files.length} file</p>
+                                                {missing.length === 0 ? (
+                                                    <p className="mt-1 inline-flex items-center gap-1 text-green-600 font-semibold"><CheckCircle2 size={12} aria-hidden="true" />Đủ giấy tờ bắt buộc</p>
+                                                ) : (
+                                                    <p className="mt-1 inline-flex items-start gap-1 text-amber-700 font-semibold">
+                                                        <AlertTriangle size={12} className="mt-0.5 shrink-0" aria-hidden="true" />Thiếu: {missing.map(getDocumentTypeLabel).join(", ")}
+                                                    </p>
+                                                )}
+                                            </td>
+                                            <td className="px-5 py-4 text-xs text-gray-600 whitespace-nowrap">{formatDate(profile.createdAt)}</td>
+                                            <td className="px-5 py-4 text-xs">
+                                                <span className={`inline-block px-2.5 py-1 rounded-lg border text-[11px] font-bold ${meta.className}`}>{meta.label}</span>
+                                                {profile.reviewedAt && <p className="mt-1 text-gray-400">{formatDate(profile.reviewedAt)}</p>}
+                                            </td>
+                                            <td className="px-5 py-4 text-right">
+                                                <button type="button" onClick={() => setDetail(profile)}
+                                                    className="inline-flex items-center gap-1.5 px-3 min-h-9 rounded-lg border border-[#0092B8]/20 bg-[#0092B8]/5 text-xs font-semibold text-[#0092B8] hover:bg-[#0092B8]/10">
+                                                    <Eye size={14} />{profile.status === "PENDING" ? "Xem & duyệt" : "Xem"}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 text-sm text-gray-500">
+                    <span>{data?.totalElements ?? 0} hồ sơ{tab === "PENDING" ? " · cũ nhất trước" : " · mới nhất trước"}</span>
+                    <div className="flex items-center gap-2">
+                        <button type="button" disabled={page === 0} onClick={() => setPage((p) => p - 1)} className="px-3 min-h-10 border border-gray-200 rounded-lg disabled:opacity-40">Trước</button>
+                        <span>Trang {page + 1} / {totalPages}</span>
+                        <button type="button" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)} className="px-3 min-h-10 border border-gray-200 rounded-lg disabled:opacity-40">Sau</button>
+                    </div>
+                </div>
+            </div>
+
+            {detail && (
+                <DocDetailModal
+                    profile={detail}
+                    onClose={() => setDetail(null)}
+                    onApprove={async () => {
+                        await approve.mutateAsync(detail.id);
+                        notify(`Đã duyệt hồ sơ — "${detail.organizationName ?? "tổ chức"}" đã được xác minh`);
+                    }}
+                    onReject={async (reason) => {
+                        await reject.mutateAsync({ id: detail.id, reason });
+                        notify("Đã từ chối hồ sơ, tổ chức có thể nộp lại");
+                    }}
                 />
             )}
         </div>

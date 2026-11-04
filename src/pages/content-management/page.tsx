@@ -9,20 +9,17 @@ import NewsList from "../../feature/content-management/news/components/NewsList"
 import NotifList from "../../feature/content-management/notification/components/NotifList";
 import RecruitmentList from "../../feature/content-management/recruitment/components/RecruitmentList";
 import AttendanceList from "../../feature/content-management/attendance/components/AttendanceList";
-import VenueList from "../../feature/content-management/venue/components/VenueList";
 import FeedbackList from "../../feature/content-management/feedback/components/FeedbackList";
 
 // Import actual data
-import { FeaturedCardData } from "../../feature/content-management/featured/data/FeaturedMockData";
-import { NewsCardData } from "../../feature/content-management/news/data/NewsMockData";
 import { NotifCardData } from "../../feature/content-management/notification/data/NotifMockData";
 import { RecruitmentCardData } from "../../feature/content-management/recruitment/data/RecruitmentMockData";
-import { VenueCardData } from "../../feature/content-management/venue/data/VenueMockData";
 
 export default function ContentManagement() {
     const { type } = useParams();
     const [filter, setFilter] = useState<any>({});
-    const [newsTagOptions, setNewsTagOptions] = useState<{ label: string; value: string }[] | undefined>(undefined);
+    // Tin tức có thẻ thống kê + bộ lọc riêng (lọc phía server)
+    const hasOwnToolbar = type === "news";
 
     if (type === "attendance") {
         return <AttendanceList />;
@@ -40,7 +37,6 @@ export default function ContentManagement() {
             case "notification": return "Thông báo hệ thống";
             case "recruitment": return "Tuyển CTV / Tình nguyện viên";
             case "attendance": return "Quản lý Điểm danh";
-            case "venue": return "Quản lý Địa điểm";
             default: return "Quản lý nội dung";
         }
     };
@@ -54,7 +50,6 @@ export default function ContentManagement() {
             case "notification": return "Gửi thông báo đến người dùng theo phân đoạn";
             case "recruitment": return "Quản lý bài tuyển CTV/TNV · Duyệt đơn ứng tuyển · Xem câu trả lời";
             case "attendance": return "Check-in/out QR · Thủ công · Quản lý participants · Nhật ký điểm danh";
-            case "venue": return "Quản lý địa điểm tổ chức sự kiện · Kiểm tra sức chứa · Admin chỉnh sửa & xóa";
             default: return "Quản lý và điều phối nội dung hệ thống";
         }
     };
@@ -65,11 +60,9 @@ export default function ContentManagement() {
         switch (type) {
             case "category": return [];
             case "event": return [];
-            case "featured": return FeaturedCardData;
-            case "news": return NewsCardData;
+            case "featured": return [];
             case "notification": return NotifCardData;
             case "recruitment": return RecruitmentCardData;
-            case "venue": return VenueCardData;
             default: return [];
         }
     };
@@ -79,10 +72,9 @@ export default function ContentManagement() {
             case "category": return <CategoryList filter={filter} />;
             case "event": return <EventList filter={filter} />;
             case "featured": return <FeaturedList filter={filter} />;
-            case "news": return <NewsList filter={filter} onTagsLoaded={setNewsTagOptions} />;
+            case "news": return <NewsList />;
             case "notification": return <NotifList />;
             case "recruitment": return <RecruitmentList filter={filter} />;
-            case "venue": return <VenueList />;
             default: return <CategoryList />;
         }
     };
@@ -109,10 +101,7 @@ export default function ContentManagement() {
             </div>
 
             <div className="flex flex-col gap-6">
-                <GroupFilter
-                    setFilter={setFilter}
-                    filter1Options={type === 'news' ? newsTagOptions : undefined}
-                />
+                {!hasOwnToolbar && <GroupFilter setFilter={setFilter} />}
                 <section className="flex flex-col gap-8">
                     {renderContent()}
                 </section>

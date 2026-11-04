@@ -1,189 +1,128 @@
-import { useState } from "react";
-import { X, Calendar, Hash, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Search, Check, Loader2, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { FeaturedEventData } from "../data/FeaturedMockData";
-import { EventsApi } from "../../../../services/events-management/EventsApi";
 import { FeaturedApi } from "../../../../services/events-management/FeaturedEventsApi";
 import { getErrorMessage } from "../../../../services/apiError";
+import { FEATURE_PLACEMENT_LABELS, type FeaturePlacement } from "../../../../types/package.types";
+import type { FeaturedCreateRequest, PublicEventSummary } from "../../../../types/featured.types";
+import { formatDateTime } from "../featuredDisplay";
+import { parseCreate } from "../featuredForm.schema";
+import FeaturedModalShell, { FIELD_LABEL_CLS, INPUT_CLS } from "./FeaturedModalShell";
+
+const SEARCH_DEBOUNCE_MS = 300;
+const PLACEMENT_OPTIONS = Object.entries(FEATURE_PLACEMENT_LABELS) as [FeaturePlacement, string][];
 
 interface Props {
-    featuredEvent: FeaturedEventData | null;
-    mode: "create" | "edit";
     onClose: () => void;
-    onSuccess: () => void;
+    onSubmit: (body: FeaturedCreateRequest) => Promise<unknown>;
 }
 
-export default function FeaturedFormModal({ featuredEvent, mode, onClose, onSuccess }: Props) {
-    const [selectedEventId, setSelectedEventId] = useState<number | "">(featuredEvent?.eventId || "");
-    const [priority, setPriority] = useState(featuredEvent?.priority || 1);
-    const [startDate, setStartDate] = useState(featuredEvent?.startDate ? new Date(featuredEvent.startDate).toISOString().slice(0, 16) : "");
-    const [endDate, setEndDate] = useState(featuredEvent?.endDate ? new Date(featuredEvent.endDate).toISOString().slice(0, 16) : "");
+/**
+ * Admin gắn trực tiếp sự kiện nổi bật (không cần đơn, không trừ lượt).
+ * Chỉ chọn được sự kiện công khai: danh sách lấy từ /public/events (chỉ trả PUBLISHED).
+ */
+export default function FeaturedFormModal({ onClose, onSubmit }: Props) {
+    const [keyword, setKeyword] = useState("");
+    const [debouncedKeyword, setDebouncedKeyword] = useState("");
+    const [selected, setSelected] = useState<PublicEventSummary | null>(null);
+    const [placement, setPlacement] = useState<FeaturePlacement>("HOME_TOP");
+    const [priority, setPriority] = useState("10");
+    const [durationDays, setDurationDays] = useState("7");
+    const [address, setAddress] = useState("");
+    const [error, setError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
-    const [errorMsg, setErrorMsg] = useState("");
 
-    // Only load events if we are creating
-    const { data: eventsData, isLoading: isLoadingEvents } = useQuery({
-        queryKey: ["allEventsForSelect"],
-        queryFn: async () => {
-            const res = await EventsApi.getAll(0, 100);
-            return res.content || [];
-        },
-        enabled: mode === "create"
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedKeyword(keyword.trim()), SEARCH_DEBOUNCE_MS);
+        return () => clearTimeout(timer);
+    }, [keyword]);
+
+    const { data, isFetching, isError } = useQuery({
+        queryKey: ["public-events-search", debouncedKeyword],
+        queryFn: () => FeaturedApi.searchPublicEvents(debouncedKeyword),
     });
+    const events = data?.items ?? [];
 
-    const eventsList = eventsData || [];
-
-    const handleSave = async () => {
+    const handleSubmit = async () => {
+        const parsed = parseCreate({ eventId: selected?.id ?? "", placement, priority, durationDays, address });
+        if (!parsed.ok) {
+            setError(parsed.error);
+            return;
+        }
+        setError(null);
+        setIsSaving(true);
         try {
-            setErrorMsg("");
-            setIsSaving(true);
-            
-            if (!startDate || !endDate) {
-                setErrorMsg("Vui lòng chọn thời gian bắt đầu và kết thúc.");
-                setIsSaving(false);
-                return;
-            }
-
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-
-            if (start >= end) {
-                setErrorMsg("Thời gian bắt đầu phải trước thời gian kết thúc.");
-                setIsSaving(false);
-                return;
-            }
-
-            if (mode === "create") {
-                if (!selectedEventId) {
-                    setErrorMsg("Vui lòng chọn một sự kiện.");
-                    setIsSaving(false);
-                    return;
-                }
-                await FeaturedApi.createFeaturedEvent(Number(selectedEventId), priority, start, end);
-                onSuccess();
-            } else if (mode === "edit" && featuredEvent) {
-                await FeaturedApi.updateFeaturedEvent(featuredEvent.featuredEventId, priority, start, end);
-                onSuccess();
-            }
-        } catch (error: unknown) {
-            setErrorMsg(getErrorMessage(error, "Đã xảy ra lỗi hệ thống."));
+            await onSubmit(parsed.payload);
+            onClose();
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, "Gắn sự kiện nổi bật thất bại"));
         } finally {
             setIsSaving(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-
-            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden animate-[zoomIn_0.2s_ease]">
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-white">
-                    <div className="flex flex-col gap-1">
-                        <h2 className="text-lg font-bold text-gray-800">
-                            {mode === "create" ? "Thêm Sự kiện nổi bật" : "Cập nhật Sự kiện nổi bật"}
-                        </h2>
-                        <p className="text-xs text-gray-500">
-                            Cấu hình thời gian hiển thị và thứ tự ưu tiên trên trang chủ
-                        </p>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
-                        <X size={20} className="text-gray-500" />
-                    </button>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5 custom-scrollbar">
-                    
-                    {errorMsg && (
-                        <div className="flex items-center gap-2 p-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm font-medium">
-                            <AlertCircle size={16} />
-                            {errorMsg}
-                        </div>
-                    )}
-
-                    {/* Event Selection */}
-                    {mode === "create" ? (
-                        <div className="flex flex-col gap-2">
-                            <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
-                                Chọn sự kiện <span className="text-red-500">*</span>
-                            </label>
-                            <select 
-                                value={selectedEventId}
-                                onChange={(e) => setSelectedEventId(Number(e.target.value))}
-                                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#0092B8] focus:ring-2 focus:ring-[#0092B8]/20 transition-all bg-white font-medium"
-                            >
-                                <option value="" disabled>
-                                    {isLoadingEvents ? "Đang tải danh sách sự kiện..." : "-- Chọn một sự kiện --"}
-                                </option>
-                                {eventsList.map((event: any) => (
-                                    <option key={event.eventId} value={event.eventId}>{event.title}</option>
-                                ))}
-                            </select>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-2">
-                            <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
-                                Sự kiện đang chọn
-                            </label>
-                            <div className="w-full border border-gray-100 bg-gray-50 rounded-xl px-4 py-3 text-sm font-bold text-gray-700">
-                                {featuredEvent?.eventTitle || `ID Sự kiện: ${featuredEvent?.eventId}`}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="flex flex-col gap-2">
-                            <label className="text-xs font-bold text-gray-600 uppercase tracking-wide flex items-center gap-1.5"><Calendar size={14}/> Bắt đầu hiển thị <span className="text-red-500">*</span></label>
-                            <input 
-                                type="datetime-local" 
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#0092B8] focus:ring-2 focus:ring-[#0092B8]/20 transition-all text-gray-700" 
-                            />
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <label className="text-xs font-bold text-gray-600 uppercase tracking-wide flex items-center gap-1.5"><Calendar size={14}/> Kết thúc hiển thị <span className="text-red-500">*</span></label>
-                            <input 
-                                type="datetime-local" 
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#0092B8] focus:ring-2 focus:ring-[#0092B8]/20 transition-all text-gray-700" 
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-xs font-bold text-gray-600 uppercase tracking-wide flex items-center gap-1.5"><Hash size={14}/> Thứ tự ưu tiên (Priority) <span className="text-red-500">*</span></label>
-                        <div className="flex items-center gap-3">
-                            <input 
-                                type="number" 
-                                min={1}
-                                value={priority}
-                                onChange={(e) => setPriority(parseInt(e.target.value) || 1)}
-                                className="w-24 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#0092B8] focus:ring-2 focus:ring-[#0092B8]/20 transition-all text-center font-bold" 
-                            />
-                            <span className="text-xs text-gray-500">Số nhỏ hơn sẽ hiển thị trước. Ví dụ: Priority 1 sẽ nằm vị trí đầu tiên.</span>
-                        </div>
-                    </div>
-
-                </div>
-
-                {/* Footer Actions */}
-                <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50">
-                    <button onClick={onClose} disabled={isSaving} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200/50 border border-transparent transition-colors disabled:opacity-50">
-                        Hủy
-                    </button>
-                    <button 
-                        onClick={handleSave} 
-                        disabled={isSaving || (mode === "create" && !selectedEventId) || !startDate || !endDate}
-                        className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#0092B8] hover:bg-[#007a99] transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isSaving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                        {mode === "create" ? "Thêm nổi bật" : "Lưu thay đổi"}
-                    </button>
-                </div>
+        <FeaturedModalShell
+            title="Gắn sự kiện nổi bật"
+            subtitle="Admin gắn trực tiếp — hiển thị ngay, không trừ lượt của tổ chức"
+            error={error}
+            isSaving={isSaving}
+            submitLabel="Gắn nổi bật"
+            onClose={onClose}
+            onSubmit={handleSubmit}
+        >
+            <div className={FIELD_LABEL_CLS}>
+                <span>Sự kiện công khai *</span>
+                <label className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 min-h-11 focus-within:border-[#0092B8]">
+                    <Search size={15} className="text-gray-400 shrink-0" aria-hidden="true" />
+                    <input type="search" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Tìm theo tiêu đề sự kiện..."
+                        aria-label="Tìm sự kiện công khai" className="flex-1 text-sm font-normal normal-case tracking-normal outline-none bg-transparent" />
+                    {isFetching && <Loader2 size={14} className="animate-spin text-[#0092B8]" />}
+                </label>
+                <ul className="max-h-48 overflow-y-auto rounded-xl border border-gray-100 divide-y divide-gray-50 font-normal normal-case tracking-normal" role="listbox" aria-label="Sự kiện công khai">
+                    {isError && <li className="px-3 py-3 text-xs text-red-500">Không tải được danh sách sự kiện</li>}
+                    {!isError && events.length === 0 && !isFetching && <li className="px-3 py-3 text-xs text-gray-400">Không có sự kiện công khai phù hợp</li>}
+                    {events.map((event) => {
+                        const isSelected = selected?.id === event.id;
+                        return (
+                            <li key={event.id} role="option" aria-selected={isSelected}>
+                                <button type="button" onClick={() => setSelected(event)}
+                                    className={`w-full text-left px-3 py-2.5 flex items-center gap-3 transition-colors ${isSelected ? "bg-[#0092B8]/10" : "hover:bg-gray-50"}`}>
+                                    <span className="flex-1 min-w-0">
+                                        <span className="block text-sm font-semibold text-gray-800 truncate">{event.title}</span>
+                                        <span className="block text-[11px] text-gray-400 truncate">{event.organizerName ?? "—"} · kết thúc {formatDateTime(event.endTime)}</span>
+                                    </span>
+                                    {isSelected && <Check size={16} className="text-[#0092B8] shrink-0" />}
+                                </button>
+                            </li>
+                        );
+                    })}
+                </ul>
+                <span className="flex items-start gap-1.5 font-normal normal-case tracking-normal text-[11px] text-gray-400">
+                    <Info size={12} className="mt-0.5 shrink-0" aria-hidden="true" />Chỉ sự kiện đã công khai (PUBLISHED) mới ghim được.
+                </span>
             </div>
-        </div>
+
+            <div className="grid grid-cols-3 gap-3">
+                <label className={FIELD_LABEL_CLS}>
+                    Vị trí *
+                    <select value={placement} onChange={(e) => setPlacement(e.target.value as FeaturePlacement)} className={`${INPUT_CLS} bg-white`}>
+                        {PLACEMENT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                </label>
+                <label className={FIELD_LABEL_CLS}>
+                    Ưu tiên *
+                    <input type="number" min={1} max={1000} value={priority} onChange={(e) => setPriority(e.target.value)} className={INPUT_CLS} />
+                </label>
+                <label className={FIELD_LABEL_CLS}>
+                    Số ngày *
+                    <input type="number" min={1} max={365} value={durationDays} onChange={(e) => setDurationDays(e.target.value)} className={INPUT_CLS} />
+                </label>
+            </div>
+            <label className={FIELD_LABEL_CLS}>
+                Địa chỉ hiển thị
+                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={255} placeholder="Để trống nếu không cần" className={INPUT_CLS} />
+            </label>
+        </FeaturedModalShell>
     );
 }

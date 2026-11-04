@@ -1,18 +1,26 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AccountApi } from "../../../services/user-management/AccountApi";
-import { USER_STATUS_LABELS, type UserStatus } from "../../../types/account.types";
+import { USER_STATUS_LABELS, type AccountProfileUpdateBody, type UserStatus } from "../../../types/account.types";
 import { useState } from "react";
 import {
-    ArrowLeft, User, Coins, History, FileCheck, ActivitySquare,
+    ArrowLeft, Award, User, Coins, History, FileCheck, ActivitySquare,
     Mail, Phone, Building2, Calendar, Pencil, Save, X, type LucideIcon
 } from "lucide-react";
+import Toast from "../../../components/common/Toast";
 import { getRoleDetails } from "../../../feature/user-management/user/data/UserMockData";
+import UserPortfolioTab from "../../../feature/user-management/user/components/UserPortfolioTab";
+import UserProfileForm from "../../../feature/user-management/user/components/UserProfileForm";
+import { getGenderLabel } from "../../../feature/user-management/user/profileForm.schema";
 
-type Tab = "profile" | "coin" | "events" | "reports" | "documents" | "logs";
+type Tab = "profile" | "portfolio" | "coin" | "events" | "reports" | "documents" | "logs";
+
+const PROFILE_FORM_ID = "user-profile-form";
+const TOAST_DURATION_MS = 3000;
 
 const tabs: { key: Tab; label: string; icon: LucideIcon }[] = [
     { key: "profile",   label: "Hồ sơ",      icon: User },
+    { key: "portfolio", label: "Portfolio",   icon: Award },
     { key: "coin",      label: "Coin",        icon: Coins },
     { key: "events",    label: "Sự kiện",     icon: History },
     { key: "reports",   label: "Khiếu nại",   icon: ActivitySquare },
@@ -37,14 +45,35 @@ function NoApiYet({ label }: { label: string }) {
 export default function UserDetailPage() {
     const { userId } = useParams();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<Tab>("profile");
     const [isEditing, setIsEditing] = useState(false);
+    const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
     const { data: user, isLoading, isError } = useQuery({
         queryKey: ['user_detail', userId],
         queryFn: () => AccountApi.getAccount(userId as string),
         enabled: !!userId,
     });
-    
+    const updateProfile = useMutation({
+        mutationFn: (body: AccountProfileUpdateBody) => AccountApi.updateProfile(userId as string, body),
+        onSuccess: () => Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['user_detail', userId] }),
+            queryClient.invalidateQueries({ queryKey: ['users_list'] }),
+        ]),
+    });
+
+    const startEditing = () => {
+        setActiveTab("profile");
+        setIsEditing(true);
+    };
+
+    const saveProfile = async (body: AccountProfileUpdateBody) => {
+        await updateProfile.mutateAsync(body);
+        setIsEditing(false);
+        setToast({ msg: "Đã lưu hồ sơ", ok: true });
+        setTimeout(() => setToast(null), TOAST_DURATION_MS);
+    };
+
     if (isLoading) {
         return <div className="p-8 text-center text-gray-500 font-medium">Đang tải thông tin người dùng...</div>;
     }
@@ -58,9 +87,13 @@ export default function UserDetailPage() {
     const sc = STATUS_STYLES[user.status];
     const profile = user.userProfile;
     const displayName = profile?.fullName || user.email;
+    // Backend chỉ sửa được tài khoản USER đã có hồ sơ
+    const canEdit = user.role === "USER" && !!profile;
 
     return (
         <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-12 animate-[fadeIn_0.3s_ease]">
+            <Toast toast={toast} onClose={() => setToast(null)} />
+
             {/* Header / Back */}
             <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -72,17 +105,17 @@ export default function UserDetailPage() {
                 <div className="flex items-center gap-2">
                     {isEditing ? (
                         <>
-                            <button onClick={() => setIsEditing(false)}
-                                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+                            <button type="button" onClick={() => setIsEditing(false)} disabled={updateProfile.isPending}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors disabled:opacity-50">
                                 <X size={15} /> Hủy
                             </button>
-                            <button
-                                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-[#0092B8] hover:bg-[#007a9e] rounded-xl transition-colors">
-                                <Save size={15} /> Lưu thay đổi
+                            <button type="submit" form={PROFILE_FORM_ID} disabled={updateProfile.isPending}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-[#0092B8] hover:bg-[#007a9e] rounded-xl transition-colors disabled:opacity-50">
+                                <Save size={15} /> {updateProfile.isPending ? "Đang lưu..." : "Lưu thay đổi"}
                             </button>
                         </>
-                    ) : (
-                        <button onClick={() => setIsEditing(true)}
+                    ) : canEdit && (
+                        <button type="button" onClick={startEditing}
                             className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors">
                             <Pencil size={15} /> Chỉnh sửa
                         </button>
@@ -122,7 +155,8 @@ export default function UserDetailPage() {
                             <button
                                 key={tab.key}
                                 onClick={() => setActiveTab(tab.key)}
-                                className={`flex items-center gap-2 px-4 py-4 text-sm font-bold whitespace-nowrap border-b-[3px] transition-all -mb-[1px] ${
+                                disabled={isEditing && tab.key !== "profile"}
+                                className={`flex items-center gap-2 px-4 py-4 text-sm font-bold whitespace-nowrap border-b-[3px] transition-all -mb-[1px] disabled:opacity-40 disabled:cursor-not-allowed ${
                                     activeTab === tab.key
                                         ? "border-[#0092B8] text-[#0092B8]"
                                         : "border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-200"
@@ -137,14 +171,17 @@ export default function UserDetailPage() {
                 {/* Tab Content */}
                 <div className="p-8 bg-white min-h-[400px]">
                     {/* PROFILE */}
-                    {activeTab === "profile" && (
+                    {activeTab === "profile" && isEditing && profile && (
+                        <UserProfileForm formId={PROFILE_FORM_ID} account={user} profile={profile} onSubmit={saveProfile} />
+                    )}
+                    {activeTab === "profile" && !isEditing && (
                         <div className="flex flex-col gap-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {[
                                     { icon: <Mail size={16} />,      label: "Email",        value: user.email, show: !!user.email },
                                     { icon: <Phone size={16} />,     label: "Điện thoại",   value: user.phoneNumber, show: !!user.phoneNumber },
                                     { icon: <Calendar size={16} />,  label: "Sinh nhật",    value: profile?.birthOfDate ? new Date(profile.birthOfDate).toLocaleDateString("vi-VN") : null, show: !!profile?.birthOfDate },
-                                    { icon: <User size={16} />,      label: "Giới tính",    value: profile?.gender === "NAM" ? "Nam" : profile?.gender === "NU" ? "Nữ" : profile?.gender, show: !!profile?.gender },
+                                    { icon: <User size={16} />,      label: "Giới tính",    value: getGenderLabel(profile?.gender ?? null), show: !!profile?.gender },
                                     { icon: <Building2 size={16} />, label: "Trường Đại học",value: profile?.university, show: !!profile?.university },
                                     { icon: <Building2 size={16} />, label: "Khoa",         value: profile?.faculty, show: !!profile?.faculty },
                                     { icon: <Building2 size={16} />, label: "Chuyên ngành", value: profile?.major, show: !!profile?.major },
@@ -159,6 +196,9 @@ export default function UserDetailPage() {
                             </div>
                         </div>
                     )}
+
+                    {/* PORTFOLIO */}
+                    {activeTab === "portfolio" && <UserPortfolioTab userId={user.id} ownerEmail={user.email} />}
 
                     {/* COIN */}
                     {activeTab === "coin" && (

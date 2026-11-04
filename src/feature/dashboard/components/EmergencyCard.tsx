@@ -1,18 +1,18 @@
 import { ShieldCheck, FileClock, FileCheck, ShieldAlert } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { VerificationDocumentApi, PENDING_DOCS_QUERY_KEY } from "../../../services/user-management/DocumentApi";
-import { ReportsApi } from "../../../services/user-management/ReportsApi";
+import { VerificationDocumentApi, VERIFICATION_QUERY_KEY } from "../../../services/user-management/DocumentApi";
+import { REPORTS_QUERY_KEY, ReportsApi } from "../../../services/user-management/ReportsApi";
 import { RecruitmentApi } from "../../../services/events-management/Recruitments";
 import { EventsApi } from "../../../services/events-management/EventsApi";
 
 export default function EmergencyCard() {
     const { data: pendingDocs,       isLoading: l1 } = useQuery({
-        queryKey: PENDING_DOCS_QUERY_KEY,
-        queryFn: VerificationDocumentApi.getPendingDocuments,
+        queryKey: [...VERIFICATION_QUERY_KEY, "count", "PENDING"],
+        queryFn: () => VerificationDocumentApi.count("PENDING"),
     });
     const { data: pendingReports,    isLoading: l2 } = useQuery({
-        queryKey: ["dashboard_pending_reports"],
-        queryFn: () => ReportsApi.getAllReports(0, 1, undefined, "PENDING"),
+        queryKey: [...REPORTS_QUERY_KEY, "count", "PENDING"],
+        queryFn: () => ReportsApi.count("PENDING"),
     });
     const { data: draftEvents,       isLoading: l3 } = useQuery({
         queryKey: ["dashboard_draft_events"],
@@ -26,8 +26,8 @@ export default function EmergencyCard() {
     const cards = [
         {
             id: "authen",
-            title: "Xác thực tài liệu chờ duyệt",
-            number: pendingDocs?.length ?? 0,
+            title: "Hồ sơ xác minh chờ duyệt",
+            number: pendingDocs ?? 0,
             icon: ShieldCheck,
             colorText: "#0092B8",
             colorBorder: "#0092B8",
@@ -38,7 +38,7 @@ export default function EmergencyCard() {
         {
             id: "report",
             title: "Báo cáo chưa xử lý",
-            number: pendingReports?.totalElements ?? 0,
+            number: pendingReports ?? 0,
             icon: ShieldAlert,
             colorText: "#E7000B",
             colorBorder: "#FBBFC2",

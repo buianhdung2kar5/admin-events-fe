@@ -18,7 +18,7 @@ interface UseAdminPackagesResult {
     isMutating: boolean;
     savePackage: (input: SavePackageInput) => Promise<PackageResponse>;
     publishPackage: (id: string) => Promise<PackageResponse>;
-    hidePackage: (id: string) => Promise<PackageResponse>;
+    unpublishPackage: (id: string) => Promise<PackageResponse>;
     deletePackage: (id: string) => Promise<void>;
 }
 
@@ -38,17 +38,17 @@ export function useAdminPackages(params: PackageListParams): UseAdminPackagesRes
         onSuccess: invalidate,
     });
     const publish = useMutation({ mutationFn: PackageApi.publishPackage, onSuccess: invalidate });
-    const hide = useMutation({ mutationFn: PackageApi.hidePackage, onSuccess: invalidate });
+    const unpublish = useMutation({ mutationFn: PackageApi.unpublishPackage, onSuccess: invalidate });
     const remove = useMutation({ mutationFn: PackageApi.deletePackage, onSuccess: invalidate });
 
     return {
         page: query.data,
         isLoading: query.isLoading,
         error: query.error ? getErrorMessage(query.error, "Không tải được danh sách gói") : null,
-        isMutating: save.isPending || publish.isPending || hide.isPending || remove.isPending,
+        isMutating: save.isPending || publish.isPending || unpublish.isPending || remove.isPending,
         savePackage: save.mutateAsync,
         publishPackage: publish.mutateAsync,
-        hidePackage: hide.mutateAsync,
+        unpublishPackage: unpublish.mutateAsync,
         deletePackage: remove.mutateAsync,
     };
 }

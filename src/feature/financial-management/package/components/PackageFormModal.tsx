@@ -2,7 +2,8 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { X, Package, Loader2 } from "lucide-react";
 import { getErrorMessage } from "../../../../services/apiError";
 import { PACKAGE_USE_FOR_LABELS, type PackageResponse, type PackageUseFor } from "../../../../types/package.types";
-import { parsePackageForm, type PackageFormValues } from "../packageForm.schema";
+import { parsePackageForm, toPackageFormValues, type PackageFormValues } from "../packageForm.schema";
+import PackageBenefitFields from "./PackageBenefitFields";
 import type { SavePackageInput } from "../hooks/useAdminPackages";
 
 interface Props {
@@ -14,17 +15,6 @@ interface Props {
 const USE_FOR_OPTIONS = Object.entries(PACKAGE_USE_FOR_LABELS) as [PackageUseFor, string][];
 const INPUT_CLS = "w-full min-h-11 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#0092B8] focus:ring-2 focus:ring-[#0092B8]/20 transition-all";
 
-const toFormValues = (pkg: PackageResponse | null): PackageFormValues => ({
-    name: pkg?.name ?? "",
-    description: pkg?.description ?? "",
-    price: pkg ? String(pkg.price) : "",
-    durationDays: pkg ? String(pkg.durationDays) : "",
-    discount: pkg?.discount ?? false,
-    sortOrder: String(pkg?.sortOrder ?? 0),
-    tag: pkg?.tag ?? "",
-    useFor: pkg?.useFor ?? "ALL",
-});
-
 function Field({ label, children }: { label: string; children: ReactNode }) {
     return (
         <label className="flex flex-col gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -35,7 +25,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export default function PackageFormModal({ pkg, onClose, onSave }: Props) {
-    const [values, setValues] = useState<PackageFormValues>(() => toFormValues(pkg));
+    const [values, setValues] = useState<PackageFormValues>(() => toPackageFormValues(pkg));
     const [error, setError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const isEdit = pkg !== null;
@@ -108,6 +98,8 @@ export default function PackageFormModal({ pkg, onClose, onSave }: Props) {
                         Đang ưu đãi
                     </label>
                 </div>
+
+                <PackageBenefitFields values={values} onChange={set} />
 
                 {error && <p role="alert" className="text-sm font-semibold text-red-600">{error}</p>}
 

@@ -155,12 +155,11 @@ const FILTER_CONFIG: any = {
     },
     "featured": {
         filter1: {
-            label: "Trạng thái",
+            // Trạng thái lọc bằng tab trong FeaturedList; ở đây lọc vị trí hiển thị (server)
+            label: "Vị trí",
             options: [
-                { label: "Tất cả trạng thái", value: "" },
-                { label: "Sắp tới", value: "PENDING" },
-                { label: "Đang ghim", value: "ACTIVE" },
-                { label: "Hết hạn", value: "CLOSED" }
+                { label: "Mọi vị trí", value: "" },
+                { label: "Đầu trang chủ", value: "HOME_TOP" }
             ]
         },
         filter2: null,

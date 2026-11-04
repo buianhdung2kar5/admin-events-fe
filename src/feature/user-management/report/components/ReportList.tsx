@@ -1,193 +1,159 @@
-import { useState, useMemo, useEffect } from "react";
-import { Search, Filter, Eye, AlertTriangle, Loader2, Mail, Phone, User } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ReportsManagement } from "../../../../services/system-management/ReportsManagement";
-import { ReportItem, ReportStatus } from "../DTO/ReportsInterface";
-import ReportDetailModal from "./ReportDetailModal";
-import Toast from "../../../../components/common/Toast";
+import { useEffect, useState } from "react";
+import type { ChangeEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Loader2, Paperclip, Search, ShieldCheck } from "lucide-react";
+import { REPORTS_QUERY_KEY, ReportsApi } from "../../../../services/user-management/ReportsApi";
+import { getErrorMessage } from "../../../../services/apiError";
+import {
+    REPORT_LEVELS,
+    type ReportLevel,
+    type ReportStatus,
+    type ReportTargetType,
+} from "../../../../types/report.types";
+import {
+    REPORTER_ROLE_LABELS,
+    REPORT_LEVEL_META,
+    REPORT_STATUS_META,
+    REPORT_TARGET_LABELS,
+    formatReportDate,
+    formatReportId,
+} from "../reportDisplay";
+import { ReportLevelBadge, ReportStatusBadge } from "./ReportBadges";
 
 const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 300;
+const SELECT_CLASS = "border border-gray-200 rounded-xl px-3 min-h-11 text-sm font-semibold text-gray-600 outline-none focus:border-[#0092B8] bg-white cursor-pointer";
 
+const STATUS_OPTIONS = Object.keys(REPORT_STATUS_META) as ReportStatus[];
+const TARGET_OPTIONS = Object.keys(REPORT_TARGET_LABELS) as ReportTargetType[];
+
+/** Danh sách báo cáo vi phạm (lọc + phân trang phía server); bấm vào dòng để mở trang xử lý. */
 export default function ReportList() {
-    const [currentPage, setCurrentPage] = useState(1);
+    const navigate = useNavigate();
+    const [status, setStatus] = useState<ReportStatus | "">("");
+    const [targetType, setTargetType] = useState<ReportTargetType | "">("");
+    const [level, setLevel] = useState<ReportLevel | "">("");
     const [search, setSearch] = useState("");
-    const [filterStatus, setFilterStatus] = useState<ReportStatus | "ALL">("ALL");
-    const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
-    const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+    const [keyword, setKeyword] = useState("");
+    const [page, setPage] = useState(0);
 
-    const queryClient = useQueryClient();
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setKeyword(search.trim());
+            setPage(0);
+        }, SEARCH_DEBOUNCE_MS);
+        return () => clearTimeout(timer);
+    }, [search]);
 
-    const { data: response, isLoading, isError } = useQuery({
-        queryKey: ['reports', currentPage],
-        queryFn: async () => {
-            const res = await ReportsManagement.getAllReports<ReportItem>(currentPage - 1, PAGE_SIZE, ['createdTime,desc']);
-            return res;
-        }
+    const params = {
+        status: status || undefined,
+        targetType: targetType || undefined,
+        level: level || undefined,
+        keyword: keyword || undefined,
+        page,
+        size: PAGE_SIZE,
+    };
+    const { data, isLoading, isFetching, error } = useQuery({
+        queryKey: [...REPORTS_QUERY_KEY, "list", params],
+        queryFn: () => ReportsApi.list(params),
+        placeholderData: keepPreviousData,
     });
 
-    const reports = response?.content || [];
-    const totalElements = response?.totalElements || 0;
-    const totalPages = response?.totalPages || 1;
+    const reports = data?.items ?? [];
+    const totalPages = Math.max(1, data?.totalPages ?? 1);
 
-    const filtered = useMemo(() => {
-        return reports.filter((r: ReportItem) => {
-            const searchLower = search.toLowerCase();
-            const matchSearch = (r.name || "").toLowerCase().includes(searchLower) ||
-                                (r.email || "").toLowerCase().includes(searchLower) ||
-                                (r.title || "").toLowerCase().includes(searchLower) ||
-                                (r.phoneNumber || "").includes(search) ||
-                                String(r.reportId).includes(search);
-            
-            const matchStatus = filterStatus === "ALL" || (r.status || "PENDING") === filterStatus;
-            return matchSearch && matchStatus;
-        });
-    }, [reports, search, filterStatus]);
-
-    useEffect(() => { setCurrentPage(1); }, [search, filterStatus]);
-
-    const handleResolve = async (id: number) => {
-        try {
-            await ReportsManagement.resolveReport(id);
-            setToast({ msg: "Đã xử lý báo cáo thành công!", ok: true });
-            queryClient.invalidateQueries({ queryKey: ['reports'] });
-            setSelectedReport(null);
-        } catch (error: any) {
-            setToast({ msg: error.message || "Lỗi khi xử lý báo cáo", ok: false });
-        }
+    const changeFilter = <T extends string>(setter: (value: T) => void) => (e: ChangeEvent<HTMLSelectElement>) => {
+        setter(e.target.value as T);
+        setPage(0);
     };
 
-    if (isError) return <div className="p-12 text-center text-red-500 bg-white rounded-3xl border border-red-100 font-medium">Lỗi khi tải danh sách báo cáo!</div>;
-
     return (
-        <div className="flex flex-col gap-6 animate-[fadeIn_0.3s_ease] relative">
-            <Toast toast={toast} onClose={() => setToast(null)} />
-            
-            <div className="flex flex-col md:flex-row items-center gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:border-[#0092B8] transition-all flex-1 w-full">
-                    <Search size={18} className="text-gray-400 shrink-0" />
-                    <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo tên, email, tiêu đề hoặc mã báo cáo..." className="text-sm outline-none bg-transparent w-full placeholder:text-gray-400" />
-                </div>
-                
-                <div className="flex items-center gap-3 shrink-0 w-full md:w-auto">
-                    <div className="flex items-center gap-2">
-                        <Filter size={18} className="text-gray-400" />
-                        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)} className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-600 outline-none focus:border-[#0092B8] bg-white cursor-pointer">
-                            <option value="ALL">Tất cả trạng thái</option>
-                            <option value="PENDING">Chờ xử lý (PENDING)</option>
-                            <option value="RESOLVED">Đã xử lý (RESOLVED)</option>
-                        </select>
-                    </div>
+        <div className="flex flex-col gap-4">
+            <div className="flex flex-col xl:flex-row xl:items-center gap-3">
+                <label className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 min-h-11 focus-within:border-[#0092B8] flex-1">
+                    <Search size={16} className="text-gray-400 shrink-0" aria-hidden="true" />
+                    <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm theo tiêu đề hoặc tên đối tượng"
+                        aria-label="Tìm báo cáo" className="text-sm outline-none bg-transparent w-full" />
+                </label>
+                <div className="flex flex-wrap gap-3">
+                    <select value={status} onChange={changeFilter<ReportStatus | "">(setStatus)} aria-label="Lọc trạng thái" className={SELECT_CLASS}>
+                        <option value="">Tất cả trạng thái</option>
+                        {STATUS_OPTIONS.map((value) => <option key={value} value={value}>{REPORT_STATUS_META[value].label}</option>)}
+                    </select>
+                    <select value={targetType} onChange={changeFilter<ReportTargetType | "">(setTargetType)} aria-label="Lọc loại đối tượng" className={SELECT_CLASS}>
+                        <option value="">Tất cả đối tượng</option>
+                        {TARGET_OPTIONS.map((value) => <option key={value} value={value}>{REPORT_TARGET_LABELS[value]}</option>)}
+                    </select>
+                    <select value={level} onChange={changeFilter<ReportLevel | "">(setLevel)} aria-label="Lọc mức độ" className={SELECT_CLASS}>
+                        <option value="">Tất cả mức độ</option>
+                        {REPORT_LEVELS.map((value) => <option key={value} value={value}>{REPORT_LEVEL_META[value].label}</option>)}
+                    </select>
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden relative min-h-[300px]">
-                {isLoading && (
-                    <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center">
-                        <Loader2 className="animate-spin text-[#0092B8]" size={32} />
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden relative">
+                {isFetching && !isLoading && <Loader2 size={16} className="absolute top-4 right-4 animate-spin text-[#0092B8]" aria-label="Đang tải lại" />}
+                {isLoading ? (
+                    <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-[#0092B8] animate-spin" /></div>
+                ) : error ? (
+                    <p role="alert" className="px-6 py-16 text-center text-sm font-medium text-red-500">{getErrorMessage(error, "Không tải được danh sách báo cáo")}</p>
+                ) : reports.length === 0 ? (
+                    <div className="px-6 py-16 flex flex-col items-center gap-2 text-sm text-gray-400">
+                        <ShieldCheck size={32} className="text-gray-300" aria-hidden="true" /> Không có báo cáo nào
                     </div>
-                )}
-                
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase font-semibold tracking-wider">
-                            <tr>
-                                <th className="px-6 py-4">Thời gian</th>
-                                <th className="px-6 py-4">Người gửi</th>
-                                <th className="px-6 py-4">Nội dung báo cáo</th>
-                                <th className="px-6 py-4">Thông tin liên hệ</th>
-                                <th className="px-6 py-4 text-center">Trạng thái</th>
-                                <th className="px-6 py-4 text-right">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {filtered.length === 0 && !isLoading ? (
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="text-xs text-gray-500 uppercase bg-gray-50/50 border-b border-gray-100 font-semibold tracking-wider">
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400 text-sm">
-                                        Không tìm thấy khiếu nại/báo cáo nào
-                                    </td>
+                                    <th className="px-5 py-4">Báo cáo</th>
+                                    <th className="px-5 py-4">Người gửi</th>
+                                    <th className="px-5 py-4">Đối tượng</th>
+                                    <th className="px-5 py-4">Mức độ</th>
+                                    <th className="px-5 py-4">Trạng thái</th>
+                                    <th className="px-5 py-4">Người xử lý</th>
+                                    <th className="px-5 py-4">Gửi lúc</th>
                                 </tr>
-                            ) : filtered.map((report: ReportItem) => (
-                                <tr key={report.reportId} className={`hover:bg-gray-50/80 transition-colors ${!report.status || report.status === 'PENDING' ? 'bg-red-50/10' : ''}`}>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            {(!report.status || report.status === 'PENDING') && <AlertTriangle size={14} className="text-red-500" />}
-                                            <span className="text-gray-600 font-medium">{new Date(report.createdTime).toLocaleString("vi-VN")}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col min-w-[150px]">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-7 h-7 rounded-full bg-[#0092B8]/10 flex items-center justify-center text-[#0092B8]">
-                                                    <User size={14} />
-                                                </div>
-                                                <span className="font-bold text-gray-800">{report.name}</span>
-                                            </div>
-                                            <span className="text-xs text-gray-400 mt-1 pl-9">UID: {report.reporter?.userId}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col max-w-[250px]">
-                                            <span className="font-bold text-gray-800 truncate">{report.title}</span>
-                                            <span className="text-xs text-gray-500 line-clamp-1 mt-1">{report.description}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col gap-1 text-[11px]">
-                                            <div className="flex items-center gap-1.5 text-gray-600 font-medium">
-                                                <Mail size={12} className="text-[#0092B8]" />
-                                                {report.email}
-                                            </div>
-                                            <div className="flex items-center gap-1.5 text-gray-600 font-medium">
-                                                <Phone size={12} className="text-[#0092B8]" />
-                                                {report.phoneNumber}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black border tracking-widest uppercase transition-all shadow-sm ${
-                                            report.status === 'RESOLVED' 
-                                            ? 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-emerald-100/50' 
-                                            : 'bg-amber-50 text-amber-600 border-amber-200 shadow-amber-100/50 animate-pulse'
-                                        }`}>
-                                            {report.status || "PENDING"}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button onClick={() => setSelectedReport(report)} className={`p-2 rounded-xl transition-all ${!report.status || report.status === 'PENDING' ? 'text-red-500 hover:bg-red-100 bg-red-50' : 'text-gray-400 hover:text-[#0092B8] hover:bg-blue-50'}`} title="Xem chi tiết & Xử lý">
-                                            <Eye size={18} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                    <div className="px-6 py-4 border-t border-gray-50 flex items-center justify-between text-xs text-gray-400 font-medium bg-gray-50/30">
-                        <span>Hiển thị <span className="text-gray-700 font-bold">{filtered.length}</span> / <span className="text-gray-700 font-bold">{totalElements}</span> báo cáo</span>
-                        <div className="flex items-center gap-1.5">
-                            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                                className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-white transition-colors disabled:opacity-40">Trước</button>
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                                <button key={p} onClick={() => setCurrentPage(p)}
-                                    className={`px-3 py-1.5 rounded-lg font-bold transition-colors ${p === currentPage ? "bg-[#0092B8] text-white border border-[#0092B8]" : "border border-gray-200 hover:bg-white"}`}>{p}</button>
-                            ))}
-                            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                                className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-white transition-colors disabled:opacity-40">Sau</button>
-                        </div>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {reports.map((report) => (
+                                    <tr key={report.id} onClick={() => navigate(`/user-management/report/${report.id}`)} className="align-top cursor-pointer hover:bg-blue-50/30 transition-colors">
+                                        <td className="px-5 py-4 max-w-xs">
+                                            <Link to={`/user-management/report/${report.id}`} onClick={(e) => e.stopPropagation()} className="font-bold text-gray-800 hover:text-[#0092B8]">{report.title}</Link>
+                                            <p className="mt-1 flex items-center gap-2 text-xs text-gray-400">
+                                                {formatReportId(report.id)}
+                                                <span className="inline-flex items-center gap-0.5"><Paperclip size={11} aria-hidden="true" />{report.evidenceCount}<span className="sr-only"> minh chứng</span></span>
+                                            </p>
+                                        </td>
+                                        <td className="px-5 py-4">
+                                            <p className="font-semibold text-gray-700">{report.reporter.displayName}</p>
+                                            <p className="text-xs text-gray-400">{REPORTER_ROLE_LABELS[report.reporter.role]}</p>
+                                        </td>
+                                        <td className="px-5 py-4">
+                                            <p className="font-semibold text-gray-700">{report.targetName}</p>
+                                            <p className="text-xs text-gray-400">{REPORT_TARGET_LABELS[report.targetType]}</p>
+                                        </td>
+                                        <td className="px-5 py-4"><ReportLevelBadge level={report.level} /></td>
+                                        <td className="px-5 py-4"><ReportStatusBadge status={report.status} /></td>
+                                        <td className="px-5 py-4 text-xs text-gray-600">{report.handledBy ?? "—"}</td>
+                                        <td className="px-5 py-4 text-xs text-gray-600 whitespace-nowrap">{formatReportDate(report.submittedAt)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 )}
-            </div>
 
-            {selectedReport && (
-                <ReportDetailModal
-                    report={selectedReport}
-                    onClose={() => setSelectedReport(null)}
-                    onResolve={handleResolve}
-                />
-            )}
+                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 text-sm text-gray-500">
+                    <span>{data?.totalElements ?? 0} báo cáo · {status === "PENDING" ? "cũ nhất trước" : "mới nhất trước"}</span>
+                    <div className="flex items-center gap-2">
+                        <button type="button" disabled={page === 0} onClick={() => setPage((p) => p - 1)} className="px-3 min-h-10 border border-gray-200 rounded-lg disabled:opacity-40">Trước</button>
+                        <span>Trang {page + 1} / {totalPages}</span>
+                        <button type="button" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)} className="px-3 min-h-10 border border-gray-200 rounded-lg disabled:opacity-40">Sau</button>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

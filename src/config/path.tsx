@@ -6,8 +6,9 @@ import FinancialManagement from "../pages/financial-management/page";
 import SettingsPage from "../pages/settings/page";
 import LoginPage from "../pages/login/page";
 import ProtectedRoute from "../auth/ProtectedRoute";
-import NewsDetailPage from "../pages/content-management/news-detail/page";
+import NewsEditPage from "../pages/content-management/news-edit/page";
 import UserDetailPage from "../pages/user-management/user-detail/page";
+import ReportDetailPage from "../pages/user-management/report-detail/page";
 import OrganizationDetailPage from "../pages/user-management/organization-detail/page";
 import EventDetailPage from "../pages/content-management/event-detail/page";
 
@@ -30,6 +31,10 @@ export default function Path() {
             element: <ProtectedRoute><UserDetailPage /></ProtectedRoute>,
         },
         {
+            path: "/user-management/report/:id",
+            element: <ProtectedRoute><ReportDetailPage /></ProtectedRoute>,
+        },
+        {
             path: "/user-management/organization/:id",
             element: <ProtectedRoute><OrganizationDetailPage /></ProtectedRoute>,
         },
@@ -38,8 +43,12 @@ export default function Path() {
             element: <ProtectedRoute><UserManagement /></ProtectedRoute>,
         },
         {
+            path: "/content-management/news/new",
+            element: <ProtectedRoute><NewsEditPage /></ProtectedRoute>,
+        },
+        {
             path: "/content-management/news/:newsId",
-            element: <ProtectedRoute><NewsDetailPage /></ProtectedRoute>,
+            element: <ProtectedRoute><NewsEditPage /></ProtectedRoute>,
         },
         {
             path: "/content-management/events/:eventId",

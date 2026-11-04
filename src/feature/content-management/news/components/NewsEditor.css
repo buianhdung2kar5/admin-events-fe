@@ -1,0 +1,32 @@
+/* Kiểu chữ cho vùng soạn thảo tin tức (project không có @tailwindcss/typography). */
+.news-editor .ProseMirror {
+    min-height: 360px;
+    padding: 16px 20px;
+    outline: none;
+    font-size: 15px;
+    line-height: 1.7;
+    color: #374151;
+}
+.news-editor .ProseMirror > * + * { margin-top: 0.75em; }
+.news-editor .ProseMirror h1 { font-size: 1.75rem; font-weight: 700; line-height: 1.3; color: #1f2937; }
+.news-editor .ProseMirror h2 { font-size: 1.4rem; font-weight: 700; line-height: 1.35; color: #1f2937; }
+.news-editor .ProseMirror h3 { font-size: 1.15rem; font-weight: 700; color: #1f2937; }
+.news-editor .ProseMirror ul { list-style: disc; padding-left: 1.5rem; }
+.news-editor .ProseMirror ol { list-style: decimal; padding-left: 1.5rem; }
+.news-editor .ProseMirror blockquote { border-left: 3px solid #0092B8; padding-left: 1rem; color: #6b7280; font-style: italic; }
+.news-editor .ProseMirror a { color: #0092B8; text-decoration: underline; }
+.news-editor .ProseMirror code { background: #f3f4f6; border-radius: 4px; padding: 0.1em 0.35em; font-size: 0.9em; }
+.news-editor .ProseMirror img { max-width: 100%; height: auto; border-radius: 8px; }
+.news-editor .ProseMirror img.ProseMirror-selectednode { outline: 3px solid #0092B8; }
+.news-editor .ProseMirror table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+.news-editor .ProseMirror th,
+.news-editor .ProseMirror td { border: 1px solid #e5e7eb; padding: 6px 10px; vertical-align: top; min-width: 60px; }
+.news-editor .ProseMirror th { background: #f9fafb; font-weight: 600; text-align: left; }
+.news-editor .ProseMirror .selectedCell { background: rgba(0, 146, 184, 0.08); }
+.news-editor .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    color: #9ca3af;
+    pointer-events: none;
+}

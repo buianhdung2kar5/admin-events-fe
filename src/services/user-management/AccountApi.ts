@@ -1,6 +1,7 @@
 import { http } from "../apiClient";
 import type { PageResponse } from "../../types/api.types";
-import type { AccountDetail, AccountListParams, AccountSummary } from "../../types/account.types";
+import type { AccountDetail, AccountListParams, AccountProfileUpdateBody, AccountSummary } from "../../types/account.types";
+import type { Portfolio } from "../../types/portfolio.types";
 
 const BASE_PATH = "/admin/accounts";
 
@@ -31,6 +32,20 @@ export const AccountApi = {
 
   getAccount(id: string): Promise<AccountDetail> {
     return http.get<AccountDetail>(`${BASE_PATH}/${id}`);
+  },
+
+  updateProfile(id: string, body: AccountProfileUpdateBody): Promise<AccountDetail> {
+    return http.put<AccountDetail>(`${BASE_PATH}/${id}/profile`, body);
+  },
+
+  /** Mọi portfolio của tài khoản, kể cả chưa publish (mới nhất trước) */
+  getPortfolios(id: string): Promise<Portfolio[]> {
+    return http.get<Portfolio[]>(`${BASE_PATH}/${id}/portfolios`);
+  },
+
+  /** Chi tiết 1 portfolio, kể cả chưa publish; đã xóa → 404 */
+  getPortfolio(portfolioId: string): Promise<Portfolio> {
+    return http.get<Portfolio>(`/admin/portfolios/${portfolioId}`);
   },
 
   block(id: string): Promise<unknown> {

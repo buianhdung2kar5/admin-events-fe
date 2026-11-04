@@ -5,8 +5,8 @@ import type { PackageListParams, PackageResponse, PackageUpsertRequest } from ".
 const BASE_PATH = "/admin/packages";
 
 /**
- * Admin quản lý danh mục gói ưu đãi. Vòng đời: DRAFT → PUBLISHED ⇄ HIDDEN.
- * Ẩn = ngừng bán (người đã mua dùng tiếp tới hết hạn). Gói PUBLISHED phải ẩn trước khi xóa.
+ * Admin quản lý danh mục gói ưu đãi. Vòng đời: DRAFT ⇄ PUBLISHED.
+ * Gỡ gói (unpublish) = ngừng bán, người đã mua dùng tiếp tới hết hạn. Gói PUBLISHED phải gỡ trước khi xóa.
  */
 export const PackageApi = {
     getPackages(params: PackageListParams): Promise<PageResponse<PackageResponse>> {
@@ -26,14 +26,14 @@ export const PackageApi = {
         return http.put<PackageResponse>(`${BASE_PATH}/${id}`, payload);
     },
 
-    /** DRAFT / HIDDEN → PUBLISHED */
+    /** DRAFT → PUBLISHED (mở bán) */
     publishPackage(id: string): Promise<PackageResponse> {
         return http.post<PackageResponse>(`${BASE_PATH}/${id}/publish`);
     },
 
-    /** PUBLISHED → HIDDEN */
-    hidePackage(id: string): Promise<PackageResponse> {
-        return http.post<PackageResponse>(`${BASE_PATH}/${id}/hide`);
+    /** PUBLISHED → DRAFT (gỡ gói) */
+    unpublishPackage(id: string): Promise<PackageResponse> {
+        return http.post<PackageResponse>(`${BASE_PATH}/${id}/unpublish`);
     },
 
     /** Xóa mềm (không áp dụng cho gói đang PUBLISHED) */

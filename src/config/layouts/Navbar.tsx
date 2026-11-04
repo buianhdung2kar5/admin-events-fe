@@ -60,10 +60,6 @@ const navItems = [
             path: "/content-management/notification"
           },
           {
-            name: "Địa điểm",
-            path: "/content-management/venue"
-          },
-          {
             name: "Tuyển CTV",
             path: "/content-management/recruitment"
           }

@@ -22,7 +22,7 @@ export default function PackageList() {
     const [form, setForm] = useState<FormState>({ open: false });
     const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
-    const { page: data, isLoading, error, isMutating, savePackage, publishPackage, hidePackage, deletePackage } =
+    const { page: data, isLoading, error, isMutating, savePackage, publishPackage, unpublishPackage, deletePackage } =
         useAdminPackages({ status: filters.status || undefined, useFor: filters.useFor || undefined, page, size: PAGE_SIZE });
 
     const keyword = filters.search.trim().toLowerCase();
@@ -52,9 +52,9 @@ export default function PackageList() {
     const actions = {
         onEdit: (pkg: PackageResponse) => setForm({ open: true, pkg }),
         onPublish: (pkg: PackageResponse) => run(() => publishPackage(pkg.id), `Đã mở bán "${pkg.name}"`),
-        onHide: (pkg: PackageResponse) => {
-            if (!window.confirm(`Ngừng bán "${pkg.name}"? Người đã mua vẫn dùng tiếp tới hết hạn.`)) return;
-            run(() => hidePackage(pkg.id), `Đã ngừng bán "${pkg.name}"`);
+        onUnpublish: (pkg: PackageResponse) => {
+            if (!window.confirm(`Gỡ gói "${pkg.name}" khỏi danh sách bán? Gói về Bản nháp, người đã mua vẫn dùng tiếp tới hết hạn.`)) return;
+            run(() => unpublishPackage(pkg.id), `Đã gỡ gói "${pkg.name}"`);
         },
         onDelete: (pkg: PackageResponse) => {
             if (!window.confirm(`Xóa gói "${pkg.name}"? Thao tác không thể hoàn tác.`)) return;

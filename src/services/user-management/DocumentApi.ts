@@ -1,32 +1,37 @@
 import { http } from "../apiClient";
-import type { VerificationDocument, VerificationStatus } from "../../feature/user-management/verify-document/DTO/VerificationInterface";
+import type { PageResponse } from "../../types/api.types";
+import type {
+    VerificationListParams,
+    VerificationProfile,
+} from "../../feature/user-management/verify-document/DTO/VerificationInterface";
 
 const BASE_PATH = "/admin/verification-documents";
-export const PENDING_DOCS_QUERY_KEY = ["verification-documents", "pending"] as const;
+export const VERIFICATION_QUERY_KEY = ["verification-profiles"] as const;
 
-/** Admin duyệt tài liệu xác minh tổ chức — chỉ thao tác được trên tài liệu PENDING. */
+/** Admin duyệt hồ sơ xác minh tổ chức (§6) — duyệt / từ chối CẢ hồ sơ, tổ chức đổi trạng thái theo. */
 export const VerificationDocumentApi = {
-    /** Tài liệu theo trạng thái — `status` bắt buộc (backend không phân trang) */
-    getDocumentsByStatus(status: VerificationStatus): Promise<VerificationDocument[]> {
-        return http.get<VerificationDocument[]>(BASE_PATH, { params: { status } });
+    /** status tùy chọn; PENDING = cũ nhất trước, còn lại mới nhất trước */
+    list(params: VerificationListParams): Promise<PageResponse<VerificationProfile>> {
+        return http.get<PageResponse<VerificationProfile>>(BASE_PATH, { params });
     },
 
-    /** Toàn bộ tài liệu đang chờ duyệt */
-    getPendingDocuments(): Promise<VerificationDocument[]> {
-        return VerificationDocumentApi.getDocumentsByStatus("PENDING");
+    get(id: string): Promise<VerificationProfile> {
+        return http.get<VerificationProfile>(`${BASE_PATH}/${id}`);
     },
 
-    getDocument(id: string): Promise<VerificationDocument> {
-        return http.get<VerificationDocument>(`${BASE_PATH}/${id}`);
+    /** Hồ sơ PENDING → APPROVED, tổ chức → VERIFIED */
+    approve(id: string): Promise<VerificationProfile> {
+        return http.post<VerificationProfile>(`${BASE_PATH}/${id}/approve`);
     },
 
-    /** PENDING → APPROVED */
-    approve(id: string): Promise<VerificationDocument> {
-        return http.post<VerificationDocument>(`${BASE_PATH}/${id}/approve`);
+    /** Hồ sơ + tổ chức → REJECTED (tổ chức nộp lại được); reason bắt buộc ≤1000 */
+    reject(id: string, reason: string): Promise<VerificationProfile> {
+        return http.post<VerificationProfile>(`${BASE_PATH}/${id}/reject`, { reason });
     },
 
-    /** PENDING → REJECTED kèm lý do (bắt buộc, ≤ 1000 ký tự) */
-    reject(id: string, note: string): Promise<VerificationDocument> {
-        return http.post<VerificationDocument>(`${BASE_PATH}/${id}/reject`, { note });
+    /** Đếm hồ sơ theo trạng thái (dùng totalElements, size=1) — cho thẻ thống kê / Dashboard */
+    async count(status?: VerificationListParams["status"]): Promise<number> {
+        const page = await VerificationDocumentApi.list({ status, page: 0, size: 1 });
+        return page.totalElements;
     },
 };

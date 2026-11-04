@@ -1,7 +1,11 @@
 /** Khớp contract backend: AuthResponse, AccountSummaryResponse, AccountDetailResponse, *ProfileResponse. */
 export type UserRole = "USER" | "ORGANIZATION" | "ADMIN";
 export type UserStatus = "ACTIVE" | "BLOCKED";
-export type OrganizationVerifyStatus = "PENDING" | "VERIFIED" | "REJECTED";
+export type OrganizationVerifyStatus = "UNVERIFIED" | "PENDING" | "VERIFIED" | "REJECTED";
+export const ORGANIZATION_TYPES = ["STUDENT_ORG", "COMPANY", "NGO"] as const;
+export type OrganizationType = (typeof ORGANIZATION_TYPES)[number];
+export const GENDERS = ["MALE", "FEMALE", "OTHER"] as const;
+export type Gender = (typeof GENDERS)[number];
 
 export interface AuthResponse {
   userId: string;
@@ -44,7 +48,7 @@ export interface OrganizationProfile {
   userId: string;
   email: string;
   organizationName: string;
-  organizationType: string | null;
+  organizationType: OrganizationType | null;
   address: string | null;
   logoUrl: string | null;
   description: string | null;
@@ -64,6 +68,12 @@ export interface AccountDetail {
   updatedAt: string | null;
   userProfile: UserProfile | null;
   organizationProfile: OrganizationProfile | null;
+}
+
+/** PUT /admin/accounts/{id}/profile — chỉ gửi nhánh khớp role, sai nhánh backend trả 400. */
+export interface AccountProfileUpdateBody {
+  userProfile?: Omit<UserProfile, "userId" | "email">;
+  organizationProfile?: Pick<OrganizationProfile, "organizationName" | "organizationType" | "address" | "logoUrl" | "description">;
 }
 
 export interface AccountListParams {

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Users, Building2, Calendar, FileText, Briefcase } from "lucide-react";
 import { AccountApi } from "../../../services/user-management/AccountApi";
 import { EventsApi } from "../../../services/events-management/EventsApi";
-import { NewApi } from "../../../services/news-management/NewApi";
+import { NewsApi } from "../../../services/news-management/NewsApi";
 import { RecruitmentApi } from "../../../services/events-management/Recruitments";
 
 interface StatCard {
@@ -58,7 +58,7 @@ export default function StatisticsRow() {
     const { data: usersData,    isLoading: l1 } = useQuery({ queryKey: ["dash_users"],      queryFn: () => AccountApi.getAccounts({ page: 0, size: 1 }) });
     const { data: orgsData,     isLoading: l2 } = useQuery({ queryKey: ["dash_orgs"],       queryFn: () => AccountApi.getAccounts({ role: "ORGANIZATION", page: 0, size: 1 }) });
     const { data: eventsData,   isLoading: l3 } = useQuery({ queryKey: ["dash_events"],     queryFn: () => EventsApi.getAll(0, 1) });
-    const { data: newsData,     isLoading: l4 } = useQuery({ queryKey: ["dash_news"],       queryFn: () => NewApi.getAllNews(0, 1, ["createdTime,desc"]) });
+    const { data: newsData,     isLoading: l4 } = useQuery({ queryKey: ["dash_news"],       queryFn: () => NewsApi.list({ page: 0, size: 1 }) });
     const { data: recruitData,  isLoading: l5 } = useQuery({ queryKey: ["dash_recruit"],   queryFn: () => RecruitmentApi.getAllRecruitment(0, 1, []) });
     const { data: pubEventsData               } = useQuery({ queryKey: ["dash_pub_events"], queryFn: () => EventsApi.getAll(0, 1, undefined, undefined, "PUBLISHED") });
 

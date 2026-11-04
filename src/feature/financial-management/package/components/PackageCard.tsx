@@ -1,7 +1,8 @@
-import { Package, Edit2, Eye, EyeOff, Trash2, Tag } from "lucide-react";
+import { Package, Edit2, Eye, EyeOff, Trash2, Tag, Sparkles } from "lucide-react";
 import {
     PACKAGE_STATUS_LABELS,
     PACKAGE_USE_FOR_LABELS,
+    describePackageConfig,
     type PackageResponse,
     type PackageStatus,
 } from "../../../../types/package.types";
@@ -9,7 +10,7 @@ import {
 export interface PackageCardActions {
     onEdit: (pkg: PackageResponse) => void;
     onPublish: (pkg: PackageResponse) => void;
-    onHide: (pkg: PackageResponse) => void;
+    onUnpublish: (pkg: PackageResponse) => void;
     onDelete: (pkg: PackageResponse) => void;
 }
 
@@ -21,15 +22,15 @@ interface Props extends PackageCardActions {
 const STATUS_STYLES: Record<PackageStatus, string> = {
     DRAFT: "bg-gray-50 text-gray-500 border-gray-200",
     PUBLISHED: "bg-green-50 text-green-600 border-green-200",
-    HIDDEN: "bg-amber-50 text-amber-600 border-amber-200",
 };
 
 const ICON_BTN = "p-2.5 rounded-lg border border-gray-100 transition-all disabled:opacity-40";
 
-/** Card hiển thị 1 gói; nút hành động theo trạng thái (DRAFT/HIDDEN → mở bán, PUBLISHED → ngừng bán). */
-export default function PackageCard({ pkg, isBusy, onEdit, onPublish, onHide, onDelete }: Props) {
+/** Card hiển thị 1 gói; nút hành động theo trạng thái (DRAFT → Mở bán, PUBLISHED → Gỡ gói). */
+export default function PackageCard({ pkg, isBusy, onEdit, onPublish, onUnpublish, onDelete }: Props) {
     const isPublished = pkg.status === "PUBLISHED";
     const priceLabel = pkg.price === 0 ? "Miễn phí" : `${pkg.price.toLocaleString("vi-VN")}đ`;
+    const benefits = describePackageConfig(pkg.config);
 
     return (
         <article className={`relative bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col ${pkg.status === "DRAFT" ? "opacity-80" : ""}`}>
@@ -47,6 +48,16 @@ export default function PackageCard({ pkg, isBusy, onEdit, onPublish, onHide, on
             <p className="text-2xl font-bold text-gray-800 tabular-nums">{priceLabel}</p>
             <p className="text-xs text-gray-400 font-bold mb-4">⏳ {pkg.durationDays} ngày · Dành cho {PACKAGE_USE_FOR_LABELS[pkg.useFor]}</p>
 
+            {benefits.length > 0 && (
+                <ul className="flex flex-col gap-1.5 mb-4" aria-label="Quyền lợi theo lượt">
+                    {benefits.map((line) => (
+                        <li key={line} className="flex items-start gap-2 text-xs font-semibold text-gray-600">
+                            <Sparkles size={13} className="text-[#0092B8] mt-0.5 shrink-0" aria-hidden="true" />{line}
+                        </li>
+                    ))}
+                </ul>
+            )}
+
             <div className="flex items-center gap-2 flex-wrap mb-5 text-[11px] font-bold">
                 {pkg.tag && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#0092B8]/10 text-[#0092B8]"><Tag size={11} />{pkg.tag}</span>}
                 {pkg.discount && <span className="px-2 py-1 rounded-md bg-rose-50 text-rose-600">Đang ưu đãi</span>}
@@ -54,10 +65,10 @@ export default function PackageCard({ pkg, isBusy, onEdit, onPublish, onHide, on
             </div>
 
             <footer className="flex items-center gap-2 mt-auto">
-                <button type="button" disabled={isBusy} onClick={() => (isPublished ? onHide(pkg) : onPublish(pkg))}
+                <button type="button" disabled={isBusy} onClick={() => (isPublished ? onUnpublish(pkg) : onPublish(pkg))}
                     className={`flex items-center justify-center gap-2 flex-1 min-h-11 rounded-lg text-[11px] font-semibold uppercase tracking-wide border transition-colors disabled:opacity-40 ${isPublished ? "bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100" : "bg-green-50 text-green-600 border-green-100 hover:bg-green-100"}`}>
                     {isPublished ? <EyeOff size={15} /> : <Eye size={15} />}
-                    {isPublished ? "Ngừng bán" : "Mở bán"}
+                    {isPublished ? "Gỡ gói" : "Mở bán"}
                 </button>
                 <button type="button" disabled={isBusy} onClick={() => onEdit(pkg)} aria-label={`Sửa gói ${pkg.name}`}
                     className={`${ICON_BTN} bg-gray-50 text-gray-400 hover:text-[#0092B8] hover:bg-blue-50`}>
